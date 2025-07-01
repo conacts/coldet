@@ -18,7 +18,6 @@ Which state should we obtain our first collection agency license in?
 **Cons:**
 
 -   Competitive market
--   Hot climate for office space
 
 ### Florida
 
@@ -31,7 +30,6 @@ Which state should we obtain our first collection agency license in?
 
 **Cons:**
 
--   Hurricane risk for operations
 -   Highly competitive market
 
 ### Nevada

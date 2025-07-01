@@ -171,6 +171,8 @@
   },
   "active": "4deb383badc43e83",
   "lastOpenFiles": [
+    "decisions/AI_CALLING_COMPLIANCE.md",
+    "decisions/DEBT_ACQUISITION.md",
     "decisions/RISK_TOLERANCE.md",
     "decisions/STATE_SELECTION.md",
     "todo/LEGAL.md",

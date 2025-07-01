@@ -34,6 +34,8 @@ All detailed documentation is organized in the `/docs` directory:
 
 -   [State Selection Analysis](decisions/STATE_SELECTION.md)
 -   [Risk Tolerance Analysis](decisions/RISK_TOLERANCE.md)
+-   [Debt Acquisition Strategy](decisions/DEBT_ACQUISITION.md)
+-   [AI Calling Compliance](decisions/AI_CALLING_COMPLIANCE.md)
 
 ### Action Items
 
