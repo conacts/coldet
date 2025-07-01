@@ -1,56 +1,38 @@
-# Debt Collection Agency
+# Coldet - AI-Powered Debt Collection Agency
+
+A modern debt collection platform leveraging AI automation to streamline debtor interactions and maximize payment conversion rates.
 
 ## Overview
 
-A modern debt collection agency leveraging technology to streamline operations and improve recovery rates.
+Coldet is a Texas-based debt collection agency startup focused on full automation through AI-driven communication and seamless payment processing. The platform handles all debtor interactions via AI to ensure compliance, efficiency, and scale.
 
-## Documentation
+## Key Features
 
-All detailed documentation is organized in the `/docs` directory:
-
-### Business Documentation
-
--   [Business Plan](docs/BUSINESS_PLAN.md)
--   [Legal Compliance](docs/LEGAL_COMPLIANCE.md)
--   [Best Practices](docs/BEST_PRACTICES.md)
--   [Financial Planning](docs/FINANCIAL_PLANNING.md)
--   [Customer Service Guidelines](docs/CUSTOMER_SERVICE.md)
--   [Risk Management](docs/RISK_MANAGEMENT.md)
-
-### Technical Documentation
-
--   [Product Roadmap](docs/PRODUCT.md)
--   [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)
--   [API Documentation](docs/API_DOCUMENTATION.md)
--   [Security Guidelines](docs/SECURITY.md)
--   [Database Schema](docs/DATABASE_SCHEMA.md)
-
-### Project Management
-
--   [Development Roadmap](docs/DEVELOPMENT_ROADMAP.md)
--   [Sprint Planning](docs/SPRINT_PLANNING.md)
-
-### Decision Points
-
--   [State Selection Analysis](decisions/STATE_SELECTION.md)
--   [Risk Tolerance Analysis](decisions/RISK_TOLERANCE.md)
--   [Debt Acquisition Strategy](decisions/DEBT_ACQUISITION.md)
--   [AI Calling Compliance](decisions/AI_CALLING_COMPLIANCE.md)
-
-### Action Items
-
--   [Feature TODOs](todo/FEATURES.md)
--   [Business TODOs](todo/BUSINESS.md)
--   [Legal TODOs](todo/LEGAL.md)
--   [Sprint Planning](docs/SPRINT_PLANNING.md)
-
-## Quick Start
-
-_Coming soon_
+-   **AI Communication Engine** - Automated email responses and outbound calling
+-   **One-Click Payments** - Mobile-optimized payment links with Apple Pay, Google Pay, and card options
+-   **Advanced Analytics** - Email tracking, website analytics, and behavioral scoring
+-   **Compliance Monitoring** - FDCPA/TCPA compliance built into every interaction
 
 ## Technology Stack
 
--   Frontend: Next.js
--   Backend: _To be determined_
--   Database: _To be determined_
--   Payment Processing: _To be determined_
+-   **Frontend:** Next.js with TypeScript (mobile-first responsive design)
+-   **Backend:** Golang with microservices architecture and cron job automation
+-   **Payments:** Stripe integration for payment processing
+-   **AI:** OpenAI/Claude for intelligent communication and decision making
+
+## Development Timeline
+
+-   **Month 1:** Core infrastructure and basic platform
+-   **Month 2:** AI automation and advanced features
+-   **Month 3:** Testing, compliance validation, and launch
+
+## Documentation
+
+-   [Business Plan](docs/BUSINESS_PLAN.md)
+-   [Legal Compliance](docs/LEGAL_COMPLIANCE.md)
+-   [Product Specification](docs/PRODUCT.md)
+-   [Customer Service](docs/CUSTOMER_SERVICE.md)
+
+---
+
+**Status:** In development - targeting Q2 2025 launch

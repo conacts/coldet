@@ -130,10 +130,10 @@ Build a fully automated debt collection agency targeting $200k MRR through opera
 
 ## Key Decisions Required
 
--   [State licensing strategy](../decisions/STATE_SELECTION.md)
--   [Risk tolerance level](../decisions/RISK_TOLERANCE.md)
--   [Debt acquisition method](../decisions/DEBT_ACQUISITION.md)
--   [AI calling compliance approach](../decisions/AI_CALLING_COMPLIANCE.md)
+-   [State licensing strategy](decisions/STATE_SELECTION.md)
+-   [Risk tolerance level](decisions/RISK_TOLERANCE.md)
+-   [Debt acquisition method](decisions/DEBT_ACQUISITION.md)
+-   [AI calling compliance approach](decisions/AI_CALLING_COMPLIANCE.md)
 
 ## Success Metrics
 
