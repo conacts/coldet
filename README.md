@@ -28,9 +28,18 @@ All detailed documentation is organized in the `/docs` directory:
 ### Project Management
 
 -   [Development Roadmap](docs/DEVELOPMENT_ROADMAP.md)
--   [Feature Development TODOs](docs/TODO_FEATURES.md)
--   [Business Setup TODOs](docs/TODO_BUSINESS.md)
--   [Legal & Compliance TODOs](docs/TODO_LEGAL.md)
+-   [Sprint Planning](docs/SPRINT_PLANNING.md)
+
+### Decision Points
+
+-   [State Selection Analysis](decisions/STATE_SELECTION.md)
+-   [Risk Tolerance Analysis](decisions/RISK_TOLERANCE.md)
+
+### Action Items
+
+-   [Feature TODOs](todo/FEATURES.md)
+-   [Business TODOs](todo/BUSINESS.md)
+-   [Legal TODOs](todo/LEGAL.md)
 -   [Sprint Planning](docs/SPRINT_PLANNING.md)
 
 ## Quick Start
