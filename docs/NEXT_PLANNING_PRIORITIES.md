@@ -22,10 +22,10 @@
 ### 1. **Service Integration Specifications** 🚨
 **Why Critical:** Need exact API configs before development
 **What's Needed:**
-- SendGrid webhook payload specifications
-- Twilio Voice/SMS API integration details  
+- AWS SES webhook payload specifications and bounce handling
+- Voice solution decision: VAPI vs Twilio + OpenAI integration
 - Stripe webhook event handling requirements
-- OpenAI/Claude API usage patterns for compliance
+- OpenAI API usage patterns for compliance
 - Phone number management (toll-free acquisition)
 
 ### 2. **Compliance Implementation Details** 🚨
@@ -68,22 +68,26 @@
 
 ### Week 1: Service Integration Planning
 
-**SendGrid Setup:**
+**AWS SES Setup:**
 ```
 - Account setup and domain verification
 - Webhook endpoint security configuration
 - Email template design for branding
+- Bounce and complaint handling
 - Suppression list management for opt-outs
-- Tracking pixel implementation for engagement
 ```
 
-**Twilio Configuration:**
+**Voice Solution (VAPI vs Twilio + OpenAI):**
 ```
-- Account setup and phone number acquisition
-- Voice API integration for AI calling
-- SMS API for text message campaigns
-- Webhook security and payload handling
-- Call recording storage and compliance
+VAPI Option:
+- All-in-one voice AI solution
+- Faster setup, less customization
+- Built-in compliance features
+
+Twilio + OpenAI Option:
+- More control over voice interactions
+- Custom compliance scripting
+- Better integration with existing systems
 ```
 
 **Stripe Integration:**
@@ -157,11 +161,17 @@
 
 ## Implementation Decision Points
 
-### Technical Stack Decisions Needed
-1. **Database:** PostgreSQL vs MySQL vs MongoDB
-2. **Hosting:** AWS vs GCP vs Vercel (for different components)
-3. **AI Provider:** OpenAI vs Claude vs combination approach
-4. **Monitoring:** DataDog vs New Relic vs custom solution
+### Technical Stack Decisions Made ✅
+1. **Database:** PostgreSQL 
+2. **Hosting:** Vercel for frontend/API
+3. **AI Provider:** OpenAI
+4. **Monitoring:** Vercel analytics + custom database tracking
+5. **Email:** AWS SES (instead of SendGrid)
+
+### Technical Stack Decisions Still Needed
+1. **Voice Solution:** VAPI vs Twilio + OpenAI (critical decision)
+2. **SMS Provider:** AWS SNS vs Twilio SMS
+3. **File Storage:** AWS S3 vs Vercel Blob for call recordings
 
 ### Business Process Decisions Needed
 1. **Debt Acquisition:** Start with portfolio purchase vs broker relationships

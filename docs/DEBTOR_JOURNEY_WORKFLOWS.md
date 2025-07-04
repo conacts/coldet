@@ -2,7 +2,7 @@
 
 ## Complete Debtor Lifecycle
 
-### 1. Initial Contact Sequence
+### 1. Aggressive Contact Sequence
 
 **Day 1: Email Introduction**
 ```
@@ -16,38 +16,41 @@ Content:
 
 Tracking:
 - Email sent, delivered, opened, clicked
-- Payment page visits recorded
-- Engagement score initialized
+- Contact count incremented
 ```
 
-**Day 7: Follow-up Email (if no response)**
+**Daily Email Follow-up (Business Days)**
 ```
-Trigger: No payment or response after 7 days
-Action: AI sends reminder email
+Trigger: No payment after previous contact
+Schedule: Daily at 9 AM local time, Monday-Friday
+Action: AI sends personalized follow-up email
 Content:
-- Friendly payment reminder
-- Updated payment link with settlement options
+- Varied messaging based on contact count
+- Payment link with settlement options
 - Phone number for questions
 
-Tracking:
-- Communication logged
-- Engagement score updated based on email interaction
+Compliance Checks:
+- Max 7 contacts per week (FDCPA limit)
+- Skip weekends and holidays
+- Honor cease and desist requests
 ```
 
-**Day 14: Phone Contact**
+**Daily Phone Contact (Business Days)**
 ```
-Trigger: Still no response after email attempts
+Trigger: After 3 email attempts without response
+Schedule: Daily at 2 PM local time, Monday-Friday
 Action: AI-powered outbound call
 Process:
 1. Check TCPA consent status
 2. Verify not on Do Not Call list
-3. Call with compliance script
-4. Log call outcome and schedule follow-up
+3. Verify max 7 calls per week limit
+4. Call with compliance script
+5. Log call outcome and schedule next
 
-Tracking:
-- Call duration, outcome (answered/voicemail/busy)
-- Conversation transcript for compliance
-- Next action scheduled automatically
+Compliance Checks:
+- Only call 8 AM - 9 PM debtor's local time
+- Honor phone consent preferences
+- Stop calling if requested
 ```
 
 ### 2. Debtor Response Scenarios
