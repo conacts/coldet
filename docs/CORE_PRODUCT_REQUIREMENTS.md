@@ -41,32 +41,8 @@
 
 ## Technical Architecture
 
-### Database Schema (Core Tables)
-```sql
--- Debt Accounts
-accounts (
-  id, debtor_id, original_creditor, balance, 
-  status, created_at, last_contact, next_action
-)
-
--- Debtor Information  
-debtors (
-  id, first_name, last_name, email, phone, 
-  address, consent_status, dnc_status
-)
-
--- Communications
-communications (
-  id, account_id, type, direction, content,
-  timestamp, outcome, next_action_date
-)
-
--- Payments
-payments (
-  id, account_id, amount, stripe_payment_id,
-  status, timestamp, payment_method
-)
-```
+### Database Schema
+See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for complete table definitions and relationships.
 
 ### API Endpoints
 ```
