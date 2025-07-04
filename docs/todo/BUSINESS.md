@@ -1,5 +1,11 @@
 # Business Setup TODOs
 
+## Planning Status: ✅ Complete
+- [x] Business strategy and revenue model finalized
+- [x] Legal compliance framework established
+- [x] Technical architecture documented
+- [x] Financial projections analyzed
+
 ## Business Formation (Month 1)
 
 -   [ ] Form LLC or Corporation in Texas
@@ -16,15 +22,15 @@
 
 ## Operational Setup (Month 1-2)
 
--   [ ] Design debt portfolio acquisition strategy
+-   [x] Design debt portfolio acquisition strategy *(completed in planning)*
 -   [ ] Create initial collection workflows and scripts
 -   [ ] Set up basic customer service procedures
--   [ ] Establish vendor relationships (email service, SMS provider)
+-   [ ] Establish vendor relationships (AWS SES, Twilio)
 
 ## Technology Infrastructure (Month 1-3)
 
 -   [ ] Set up development environment (Golang + Next.js)
--   [ ] Design database schema for debt management
+-   [x] Design database schema for debt management *(completed in planning)*
 -   [ ] Implement basic platform architecture
 -   [ ] Set up hosting and deployment pipeline
 
