@@ -1,231 +1,146 @@
-# Backend-Frontend Integration Architecture
+# Next.js Full-Stack Architecture
 
 ## Executive Summary
 
-This document outlines the integration architecture between the Go backend API and Next.js frontend for the COLDET debt collection platform. The system supports multiple integration patterns including direct API calls, tRPC implementation, and hybrid database access strategies.
+This document outlines the full-stack Next.js architecture for the COLDET debt collection platform. The system uses Next.js for both frontend and backend functionality, with direct database access via Prisma ORM, eliminating the need for a separate Go API server.
 
-## Current Architecture Overview
+## Architecture Overview
 
-### Backend (Go API Server)
-- **Framework**: Gin with GORM ORM
-- **Database**: PostgreSQL with UUID primary keys
-- **Port**: 8080 (configurable via PORT env var)
-- **Key Features**: Webhooks, REST API, dynamic page generation
-
-### Frontend (Next.js 15.3.4)
-- **Framework**: Next.js with App Router
+### Full-Stack Next.js Application
+- **Framework**: Next.js 15.3.4 with App Router
 - **Language**: TypeScript
-- **UI Library**: Radix UI components with Tailwind CSS
-- **State Management**: React Hook Form with Zod validation
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js or custom JWT implementation
+- **Key Features**: API routes, webhooks, dynamic pages, database operations
 
-## Integration Patterns
+## Architecture Pattern
 
-### Pattern 1: Traditional REST API (Current Implementation)
+### Full-Stack Next.js Application
 
 **Architecture:**
 ```
-┌─────────────────┐    HTTP/REST    ┌─────────────────┐
-│   Next.js App   │ ────────────► │   Go API Server │
-│   (Port 3000)   │ ◄──────────── │   (Port 8080)   │
-└─────────────────┘                └─────────────────┘
-                                            │
-                                            ▼
-                                   ┌─────────────────┐
-                                   │   PostgreSQL    │
-                                   └─────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                   Next.js Application                   │
+│                                                         │
+│  ┌─────────────────┐    ┌─────────────────────────────┐ │
+│  │   Frontend      │    │      Backend API Routes     │ │
+│  │   Components    │    │                             │ │
+│  │                 │    │  /api/webhooks/email        │ │
+│  │  - Dashboard    │    │  /api/webhooks/stripe       │ │
+│  │  - Debtor Pages │    │  /api/webhooks/twilio       │ │
+│  │  - Payment UI   │    │  /api/debtors/[token]       │ │
+│  │                 │    │  /api/communications/send   │ │
+│  └─────────────────┘    │  /api/payments/create-link  │ │
+│                         │  /api/tracking/page-view    │ │
+│                         └─────────────────────────────┘ │
+│                                      │                  │
+└──────────────────────────────────────┼──────────────────┘
+                                       │
+                                       ▼
+                              ┌─────────────────┐
+                              │   PostgreSQL    │
+                              │   (via Prisma)  │
+                              └─────────────────┘
 ```
 
-**Current Endpoints:**
-```go
+**API Routes Structure:**
+```typescript
 // Webhook endpoints
-POST /webhook/email         // AWS SES email webhooks
-POST /webhook/stripe        // Stripe payment webhooks  
-POST /webhook/twilio        // Twilio voice/SMS webhooks
+POST /api/webhooks/email         // AWS SES email webhooks
+POST /api/webhooks/stripe        // Stripe payment webhooks  
+POST /api/webhooks/twilio        // Twilio voice/SMS webhooks
 
 // API endpoints
-GET  /api/debtors/:token    // Get debtor by unique token
-PUT  /api/debtors/:token    // Update debtor information
-POST /api/emails/send       // Send email via AWS SES
-POST /api/calls/outbound    // Initiate outbound call
-GET  /api/communications/:debtor_id  // Get communication history
-POST /api/payment-links     // Create Stripe payment link
-GET  /api/payments/:debtor_id       // Get payment history
+GET  /api/debtors/[token]        // Get debtor by unique token
+PUT  /api/debtors/[token]        // Update debtor information
+POST /api/emails/send            // Send email via AWS SES
+POST /api/calls/outbound         // Initiate outbound call
+GET  /api/communications/[debtorId]  // Get communication history
+POST /api/payments/create-link   // Create Stripe payment link
+GET  /api/payments/[debtorId]    // Get payment history
 
-// Dynamic debtor pages (Go serves HTML)
-GET  /debtor/:token         // Debtor landing page
-GET  /pay/:token           // Payment page
-GET  /info/:token          // Account information page
+// Dynamic debtor pages (Next.js pages)
+GET  /debtor/[token]             // Debtor landing page
+GET  /pay/[token]               // Payment page
+GET  /info/[token]              // Account information page
 
 // Tracking
-POST /track/page-view      // Page view analytics
-```
-
-**Pros:**
-- Simple implementation
-- Clear separation of concerns
-- Standard HTTP patterns
-- Works with existing codebase
-
-**Cons:**
-- No type safety between frontend/backend
-- Manual API client management
-- Potential for API drift
-- More boilerplate code
-
-### Pattern 2: tRPC Integration (Recommended)
-
-**Architecture:**
-```
-┌─────────────────┐    tRPC/HTTP    ┌─────────────────┐
-│   Next.js App   │ ────────────► │   Go API Server │
-│   (tRPC Client) │ ◄──────────── │  (tRPC Adapter) │
-└─────────────────┘                └─────────────────┘
-                                            │
-                                            ▼
-                                   ┌─────────────────┐
-                                   │   PostgreSQL    │
-                                   └─────────────────┘
-```
-
-**Implementation Strategy:**
-
-1. **Go Backend tRPC Adapter**:
-   - Create tRPC-compatible JSON-RPC HTTP handler
-   - Maintain existing Gin routes for webhooks
-   - Generate TypeScript types from Go structs
-
-2. **Next.js Frontend tRPC Client**:
-   - Full type safety with generated types
-   - Automatic API documentation
-   - Built-in error handling and caching
-
-**Example tRPC Router Structure:**
-```typescript
-// Generated from Go backend
-export const appRouter = {
-  debtors: {
-    getByToken: procedure
-      .input(z.object({ token: z.string() }))
-      .query(async ({ input }) => {
-        // Type-safe call to Go backend
-      }),
-    
-    update: procedure
-      .input(UpdateDebtorSchema)
-      .mutation(async ({ input }) => {
-        // Type-safe mutation
-      }),
-  },
-  
-  communications: {
-    getHistory: procedure
-      .input(z.object({ debtorId: z.string().uuid() }))
-      .query(async ({ input }) => {
-        // Get communication history
-      }),
-      
-    sendEmail: procedure
-      .input(SendEmailSchema)
-      .mutation(async ({ input }) => {
-        // Send email via AWS SES
-      }),
-  },
-  
-  payments: {
-    createLink: procedure
-      .input(CreatePaymentLinkSchema)
-      .mutation(async ({ input }) => {
-        // Create Stripe payment link
-      }),
-      
-    getHistory: procedure
-      .input(z.object({ debtorId: z.string().uuid() }))
-      .query(async ({ input }) => {
-        // Get payment history
-      }),
-  },
-};
+POST /api/tracking/page-view     // Page view analytics
 ```
 
 **Benefits:**
-- End-to-end type safety
-- Auto-generated API documentation
-- Reduced boilerplate
-- Better developer experience
-- Automatic error handling
+- Single codebase for frontend and backend
+- Full TypeScript type safety throughout
+- Shared types between client and server
+- Simplified deployment and development
+- Built-in Next.js optimizations
+- No API client management needed
 
-### Pattern 3: Hybrid Database Access (Recommended for Performance)
+### Database Access Patterns
 
-**Architecture:**
-```
-┌─────────────────┐    
-│   Next.js App   │    
-│                 │    Direct DB Access (Read-Heavy)
-│   ┌─────────────┤    ┌─────────────────┐
-│   │ DB Client   │────┤   PostgreSQL    │
-│   └─────────────┤    └─────────────────┘
-│                 │             │
-│                 │             │ Complex Operations
-│                 │             ▼
-│                 │    ┌─────────────────┐
-│                 │────┤   Go API Server │
-└─────────────────┘    └─────────────────┘
-```
-
-**Database Access Pattern:**
-
-**Next.js Direct Database Operations:**
+**Direct Database Operations:**
 ```typescript
-// Read-heavy operations (dashboards, reports)
-const debtors = await db.debtor.findMany({
+// All operations handled within Next.js
+const debtors = await prisma.debtor.findMany({
   where: { status: 'active' },
   include: {
-    communications: true,
-    payments: true,
+    debts: {
+      include: {
+        communications: true,
+        payments: true,
+      },
+    },
   },
 });
 
 // Simple CRUD operations
-const debtor = await db.debtor.update({
+const debtor = await prisma.debtor.update({
   where: { id: debtorId },
   data: { phone_consent: true },
 });
 ```
 
-**Go API Complex Operations:**
-```go
-// AI-powered operations
-func (s *Server) generateAIResponse(c *gin.Context) {
-    // Complex AI processing
-    // Multi-step database operations
-    // External API integrations
-}
-
-// Webhook processing
-func (s *Server) handleStripeWebhook(c *gin.Context) {
-    // Payment processing logic
-    // Multi-table updates
-    // Compliance logging
+**API Route Operations:**
+```typescript
+// Complex operations in API routes
+export async function POST(request: Request) {
+  // AI-powered operations
+  // Multi-step database operations
+  // External API integrations
+  
+  const response = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [{ role: "user", content: prompt }],
+  });
+  
+  // Save to database
+  await prisma.communication.create({
+    data: {
+      content: response.choices[0].message.content,
+      ai_generated: true,
+      debt_id: debtId,
+    },
+  });
 }
 ```
 
-**When to Use Each:**
+**Operation Types:**
 
-| Operation Type | Use Next.js | Use Go API | Reason |
-|---|---|---|---|
-| Dashboard data | ✅ | ❌ | Fast reads, simple queries |
-| Reports/Analytics | ✅ | ❌ | Complex aggregations |
-| Simple CRUD | ✅ | ❌ | Reduced latency |
-| AI Operations | ❌ | ✅ | Complex processing |
-| Webhook Processing | ❌ | ✅ | External integrations |
-| Payment Processing | ❌ | ✅ | Security & compliance |
-| Bulk Operations | ❌ | ✅ | Performance |
+| Operation Type | Implementation | Location |
+|---|---|---|
+| Dashboard data | Direct DB queries | Server Components |
+| Reports/Analytics | Direct DB queries | Server Components |
+| Simple CRUD | Direct DB queries | Server/Client Components |
+| AI Operations | External API calls | API Routes |
+| Webhook Processing | External integrations | API Routes |
+| Payment Processing | Stripe integration | API Routes |
+| Bulk Operations | Direct DB queries | API Routes |
 
-## Database Connection Strategy
+## Database Strategy
 
-### Next.js Database Setup
+### Prisma ORM Setup
 
-**Option 1: Prisma (Recommended)**
+**Prisma Schema:**
 ```typescript
 // prisma/schema.prisma
 generator client {
@@ -243,10 +158,21 @@ model Debtor {
   lastName    String   @map("last_name")
   email       String?  @unique
   phone       String?
-  // ... other fields
+  addressLine1 String? @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city        String?
+  state       String?
+  zipCode     String?  @map("zip_code")
   
-  debts         Debt[]
-  communications Communication[]
+  // Consent and compliance
+  phoneConsent Boolean @default(false) @map("phone_consent")
+  emailConsent Boolean @default(true) @map("email_consent")
+  dncRegistered Boolean @default(false) @map("dnc_registered")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  debts       Debt[]
   
   @@map("debtors")
 }
@@ -254,11 +180,22 @@ model Debtor {
 model Debt {
   id            String   @id @default(dbgenerated("gen_random_uuid()"))
   debtorId      String   @map("debtor_id")
+  
+  // Debt details
+  originalCreditor String  @map("original_creditor")
   totalOwed     Decimal  @map("total_owed")
-  amountPaid    Decimal  @map("amount_paid")
-  uniqueToken   String   @unique @map("unique_token")
+  amountPaid    Decimal  @default(0) @map("amount_paid")
   status        String   @default("active")
-  // ... other fields
+  
+  // Tracking
+  uniqueToken   String   @unique @map("unique_token")
+  totalContacts Int      @default(0) @map("total_contacts")
+  
+  // Dates
+  debtDate      DateTime? @map("debt_date")
+  importedAt    DateTime @default(now()) @map("imported_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
   
   debtor        Debtor   @relation(fields: [debtorId], references: [id])
   payments      Payment[]
@@ -266,36 +203,58 @@ model Debt {
   
   @@map("debts")
 }
+
+model Communication {
+  id            String   @id @default(dbgenerated("gen_random_uuid()"))
+  debtId        String   @map("debt_id")
+  
+  type          String   // 'email', 'call', 'sms'
+  direction     String   // 'inbound', 'outbound'
+  subject       String?
+  content       String?
+  
+  // Tracking
+  opened        Boolean  @default(false)
+  clicked       Boolean  @default(false)
+  
+  // Metadata
+  aiGenerated   Boolean  @default(false) @map("ai_generated")
+  complianceChecked Boolean @default(true) @map("compliance_checked")
+  
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  debt          Debt     @relation(fields: [debtId], references: [id])
+  
+  @@map("communications")
+}
+
+model Payment {
+  id            String   @id @default(dbgenerated("gen_random_uuid()"))
+  debtId        String   @map("debt_id")
+  
+  amount        Decimal
+  paymentType   String   @map("payment_type") // 'full', 'partial', 'plan'
+  
+  // Stripe integration
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
+  stripeSessionId String? @map("stripe_session_id")
+  paymentMethod String?  @map("payment_method")
+  
+  status        String   @default("pending") // 'pending', 'completed', 'failed', 'refunded'
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+  
+  debt          Debt     @relation(fields: [debtId], references: [id])
+  
+  @@map("payments")
+}
 ```
 
-**Option 2: Drizzle ORM (Alternative)**
-```typescript
-// db/schema.ts
-import { pgTable, uuid, varchar, decimal, timestamp } from 'drizzle-orm/pg-core';
+### Database Connection
 
-export const debtors = pgTable('debtors', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  firstName: varchar('first_name', { length: 100 }).notNull(),
-  lastName: varchar('last_name', { length: 100 }).notNull(),
-  email: varchar('email', { length: 255 }).unique(),
-  phone: varchar('phone', { length: 20 }),
-  // ... other fields
-});
-
-export const debts = pgTable('debts', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  debtorId: uuid('debtor_id').notNull().references(() => debtors.id),
-  totalOwed: decimal('total_owed', { precision: 10, scale: 2 }).notNull(),
-  amountPaid: decimal('amount_paid', { precision: 10, scale: 2 }).notNull(),
-  uniqueToken: varchar('unique_token', { length: 50 }).unique().notNull(),
-  status: varchar('status', { length: 20 }).default('active'),
-  // ... other fields
-});
-```
-
-### Connection Pooling
-
-**Next.js Connection Management:**
+**Connection Management:**
 ```typescript
 // lib/db.ts
 import { PrismaClient } from '@prisma/client';
@@ -304,164 +263,273 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: ['query', 'error', 'warn'],
+});
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 ```
 
-**Go Connection Management:**
-```go
-// Already implemented in main.go
-func setupDatabase() *gorm.DB {
-    dsn := os.Getenv("DATABASE_URL")
-    if dsn == "" {
-        dsn = "postgres://user:password@localhost/coldet?sslmode=disable"
-    }
-    
-    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-    if err != nil {
-        log.Fatal("Failed to connect to database:", err)
-    }
-    
-    return db
+**Database Utilities:**
+```typescript
+// lib/db-utils.ts
+import { prisma } from './db';
+
+export async function getDebtorByToken(token: string) {
+  return await prisma.debtor.findFirst({
+    where: {
+      debts: {
+        some: {
+          uniqueToken: token,
+        },
+      },
+    },
+    include: {
+      debts: {
+        where: {
+          uniqueToken: token,
+        },
+        include: {
+          communications: {
+            orderBy: { timestamp: 'desc' },
+            take: 10,
+          },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function logCommunication(debtId: string, data: {
+  type: string;
+  direction: string;
+  content?: string;
+  subject?: string;
+}) {
+  return await prisma.communication.create({
+    data: {
+      debtId,
+      ...data,
+    },
+  });
 }
 ```
 
 ## API Design Patterns
 
-### RESTful API Structure
+### Next.js API Routes
 
-**Current Go API Routes:**
-```go
-// Webhook routes (keep in Go for security)
-POST /webhook/email         // AWS SES webhook
-POST /webhook/stripe        // Stripe webhook
-POST /webhook/twilio        // Twilio webhook
+**API Route Structure:**
+```typescript
+// Webhook routes
+POST /api/webhooks/email         // AWS SES webhook
+POST /api/webhooks/stripe        // Stripe webhook
+POST /api/webhooks/twilio        // Twilio webhook
 
-// API routes (can be replaced with tRPC)
-GET  /api/debtors/:token    // Get debtor info
-PUT  /api/debtors/:token    // Update debtor
-POST /api/emails/send       // Send email
-POST /api/calls/outbound    // Make call
-GET  /api/communications/:debtor_id  // Get comms
-POST /api/payment-links     // Create payment link
-GET  /api/payments/:debtor_id       // Get payments
+// Debtor management
+GET  /api/debtors/[token]        // Get debtor info
+PUT  /api/debtors/[token]        // Update debtor
 
-// Dynamic pages (keep in Go)
-GET  /debtor/:token         // Debtor landing page
-GET  /pay/:token           // Payment page
-GET  /info/:token          // Account info page
+// Communications
+POST /api/communications/send    // Send email/SMS
+GET  /api/communications/[debtorId]  // Get communication history
+
+// Payments
+POST /api/payments/create-link   // Create payment link
+GET  /api/payments/[debtorId]    // Get payment history
+
+// AI Operations
+POST /api/ai/generate-response   // Generate AI response
+POST /api/ai/analyze-sentiment   // Analyze communication sentiment
+
+// Tracking
+POST /api/tracking/page-view     // Track page views
 ```
 
-### tRPC Implementation
+### Example API Route Implementation
 
-**1. Go Backend tRPC Handler:**
-```go
-// trpc/handler.go
-package trpc
+**1. Debtor API Route:**
+```typescript
+// app/api/debtors/[token]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getDebtorByToken } from '@/lib/db-utils';
 
-import (
-    "encoding/json"
-    "net/http"
-    "github.com/gin-gonic/gin"
-)
-
-type TRPCRequest struct {
-    ID     string                 `json:"id"`
-    Method string                 `json:"method"`
-    Params map[string]interface{} `json:"params"`
-}
-
-type TRPCResponse struct {
-    ID     string      `json:"id"`
-    Result interface{} `json:"result,omitempty"`
-    Error  *TRPCError  `json:"error,omitempty"`
-}
-
-type TRPCError struct {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
-}
-
-func (s *Server) handleTRPC(c *gin.Context) {
-    var req TRPCRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, TRPCResponse{
-            ID:    req.ID,
-            Error: &TRPCError{Code: -32700, Message: "Parse error"},
-        })
-        return
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
+  try {
+    const debtor = await getDebtorByToken(params.token);
+    
+    if (!debtor) {
+      return NextResponse.json({ error: 'Debtor not found' }, { status: 404 });
     }
     
-    // Route to appropriate handler
-    switch req.Method {
-    case "debtors.getByToken":
-        s.handleGetDebtor(c, req)
-    case "debtors.update":
-        s.handleUpdateDebtor(c, req)
-    case "communications.send":
-        s.handleSendCommunication(c, req)
-    default:
-        c.JSON(http.StatusNotFound, TRPCResponse{
-            ID:    req.ID,
-            Error: &TRPCError{Code: -32601, Message: "Method not found"},
-        })
+    return NextResponse.json(debtor);
+  } catch (error) {
+    console.error('Error fetching debtor:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
+  try {
+    const body = await request.json();
+    const { phone, email, phoneConsent, emailConsent } = body;
+    
+    const debt = await prisma.debt.findUnique({
+      where: { uniqueToken: params.token },
+    });
+    
+    if (!debt) {
+      return NextResponse.json({ error: 'Debt not found' }, { status: 404 });
     }
+    
+    const updatedDebtor = await prisma.debtor.update({
+      where: { id: debt.debtorId },
+      data: {
+        phone,
+        email,
+        phoneConsent,
+        emailConsent,
+      },
+    });
+    
+    return NextResponse.json(updatedDebtor);
+  } catch (error) {
+    console.error('Error updating debtor:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
 ```
 
-**2. Next.js tRPC Client:**
+**2. Webhook Handler:**
 ```typescript
-// lib/trpc.ts
-import { createTRPCNext } from '@trpc/next';
-import { httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '../types/api';
+// app/api/webhooks/stripe/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { stripe } from '@/lib/stripe';
+import { prisma } from '@/lib/db';
 
-export const trpc = createTRPCNext<AppRouter>({
-  config() {
-    return {
-      links: [
-        httpBatchLink({
-          url: process.env.NEXT_PUBLIC_API_URL + '/trpc',
-          // Optional: add auth headers
-          headers() {
-            return {
-              // authorization: getAuthCookie(),
-            };
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+  const signature = headers().get('stripe-signature');
+  
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+  }
+  
+  try {
+    const event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+    
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        
+        // Update payment status
+        await prisma.payment.update({
+          where: { stripePaymentIntentId: paymentIntent.id },
+          data: { 
+            status: 'completed',
+            completedAt: new Date(),
           },
-        }),
-      ],
-    };
-  },
-});
+        });
+        
+        // Update debt balance
+        const payment = await prisma.payment.findUnique({
+          where: { stripePaymentIntentId: paymentIntent.id },
+          include: { debt: true },
+        });
+        
+        if (payment) {
+          await prisma.debt.update({
+            where: { id: payment.debtId },
+            data: {
+              amountPaid: {
+                increment: payment.amount,
+              },
+            },
+          });
+        }
+        
+        break;
+        
+      case 'payment_intent.payment_failed':
+        // Handle failed payment
+        break;
+        
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+    
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 400 });
+  }
+}
 ```
 
-**3. Type-Safe API Calls:**
+**3. AI Integration:**
 ```typescript
-// pages/debtor/[token].tsx
-import { trpc } from '../../lib/trpc';
+// app/api/ai/generate-response/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { openai } from '@/lib/openai';
+import { prisma } from '@/lib/db';
 
-export default function DebtorPage({ token }: { token: string }) {
-  const { data: debtor, isLoading, error } = trpc.debtors.getByToken.useQuery({ token });
-  const updateDebtor = trpc.debtors.update.useMutation();
-  
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  
-  const handleUpdatePhone = async (phone: string) => {
-    await updateDebtor.mutateAsync({
-      token,
-      data: { phone },
+export async function POST(request: NextRequest) {
+  try {
+    const { debtId, inboundMessage, debtorName, balance } = await request.json();
+    
+    const prompt = `
+      You are an AI assistant for a debt collection agency. 
+      Respond to the following message from ${debtorName} who owes $${balance}.
+      
+      Their message: "${inboundMessage}"
+      
+      Guidelines:
+      - Be professional and empathetic
+      - Offer payment options
+      - Comply with FDCPA regulations
+      - Keep response under 200 words
+    `;
+    
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 250,
     });
-  };
-  
-  return (
-    <div>
-      <h1>{debtor.firstName} {debtor.lastName}</h1>
-      <p>Balance: ${debtor.totalOwed}</p>
-      {/* ... rest of component */}
-    </div>
-  );
+    
+    const aiResponse = response.choices[0].message.content;
+    
+    // Log the AI response
+    await prisma.communication.create({
+      data: {
+        debtId,
+        type: 'email',
+        direction: 'outbound',
+        content: aiResponse,
+        aiGenerated: true,
+      },
+    });
+    
+    return NextResponse.json({ response: aiResponse });
+  } catch (error) {
+    console.error('AI generation error:', error);
+    return NextResponse.json({ error: 'AI generation failed' }, { status: 500 });
+  }
 }
 ```
 
@@ -470,22 +538,36 @@ export default function DebtorPage({ token }: { token: string }) {
 ### Authentication Strategy
 
 **JWT Token Implementation:**
-```go
-// Go backend
-func (s *Server) generateJWT(debtorID string) (string, error) {
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-        "sub": debtorID,
-        "exp": time.Now().Add(time.Hour * 24).Unix(),
-        "iat": time.Now().Unix(),
-    })
-    
-    return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+```typescript
+// lib/auth.ts
+import jwt from 'jsonwebtoken';
+
+export function generateJWT(debtorId: string): string {
+  return jwt.sign(
+    { 
+      sub: debtorId,
+      iat: Date.now() / 1000,
+      exp: Date.now() / 1000 + (24 * 60 * 60), // 24 hours
+    },
+    process.env.JWT_SECRET!
+  );
 }
 
-func (s *Server) validateJWT(tokenString string) (*jwt.Token, error) {
-    return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        return []byte(os.Getenv("JWT_SECRET")), nil
-    })
+export function verifyJWT(token: string): { sub: string } {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!) as { sub: string };
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+}
+
+export function getDebtorIdFromToken(token: string): string | null {
+  try {
+    const decoded = verifyJWT(token);
+    return decoded.sub;
+  } catch {
+    return null;
+  }
 }
 ```
 
@@ -497,7 +579,16 @@ import type { NextRequest } from 'next/server';
 import { verifyJWT } from './lib/auth';
 
 export function middleware(request: NextRequest) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
+  // Skip auth for webhooks and public routes
+  if (request.nextUrl.pathname.startsWith('/api/webhooks') || 
+      request.nextUrl.pathname.startsWith('/debtor/') ||
+      request.nextUrl.pathname.startsWith('/pay/') ||
+      request.nextUrl.pathname.startsWith('/info/')) {
+    return NextResponse.next();
+  }
+  
+  const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                request.cookies.get('auth-token')?.value;
   
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -505,7 +596,6 @@ export function middleware(request: NextRequest) {
   
   try {
     const decoded = verifyJWT(token);
-    // Add user info to request headers
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', decoded.sub);
     
@@ -520,8 +610,42 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: ['/api/:path*', '/admin/:path*'],
 };
+```
+
+**Session Management:**
+```typescript
+// lib/session.ts
+import { prisma } from './db';
+
+export async function createSession(debtorId: string) {
+  const token = generateJWT(debtorId);
+  
+  // Store session in database for tracking
+  await prisma.session.create({
+    data: {
+      debtorId,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    },
+  });
+  
+  return token;
+}
+
+export async function validateSession(token: string) {
+  const session = await prisma.session.findUnique({
+    where: { token },
+    include: { debtor: true },
+  });
+  
+  if (!session || session.expiresAt < new Date()) {
+    return null;
+  }
+  
+  return session;
+}
 ```
 
 ### Database Security
@@ -566,65 +690,161 @@ docker run --name coldet-db -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgr
 # Create database
 createdb coldet
 
-# Run migrations
-cd api && go run main.go migrate
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database URL and API keys
 ```
 
-**2. Go Backend:**
+**2. Install Dependencies:**
 ```bash
-cd api
-go mod tidy
-go run main.go
-# Server runs on http://localhost:8080
-```
-
-**3. Next.js Frontend:**
-```bash
-cd ..
 npm install
+```
+
+**3. Database Migration:**
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate dev --name init
+
+# Seed database (optional)
+npx prisma db seed
+```
+
+**4. Run Next.js Application:**
+```bash
 npm run dev
 # App runs on http://localhost:3000
+# API routes available at http://localhost:3000/api/*
 ```
 
-### API Integration Testing
+### Testing Strategy
 
-**Go API Tests:**
-```go
-// api/main_test.go
-func TestGetDebtorByToken(t *testing.T) {
-    router := setupRouter()
-    w := httptest.NewRecorder()
-    
-    req, _ := http.NewRequest("GET", "/api/debtors/test-token", nil)
-    router.ServeHTTP(w, req)
-    
-    assert.Equal(t, 200, w.Code)
-    
-    var debtor Debtor
-    err := json.Unmarshal(w.Body.Bytes(), &debtor)
-    assert.NoError(t, err)
-    assert.Equal(t, "John", debtor.FirstName)
-}
-```
-
-**Next.js API Tests:**
+**API Route Tests:**
 ```typescript
 // __tests__/api/debtors.test.ts
-import { createMocks } from 'node-mocks-http';
-import handler from '../../pages/api/debtors/[token]';
+import { GET, PUT } from '@/app/api/debtors/[token]/route';
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/db';
+
+// Mock Prisma
+jest.mock('@/lib/db', () => ({
+  prisma: {
+    debtor: {
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    debt: {
+      findUnique: jest.fn(),
+    },
+  },
+}));
 
 describe('/api/debtors/[token]', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should return debtor data', async () => {
-    const { req, res } = createMocks({
-      method: 'GET',
-      query: { token: 'test-token' },
+    const mockDebtor = {
+      id: '123',
+      firstName: 'John',
+      lastName: 'Doe',
+      debts: [{ uniqueToken: 'test-token' }],
+    };
+
+    (prisma.debtor.findFirst as jest.Mock).mockResolvedValue(mockDebtor);
+
+    const request = new NextRequest('http://localhost:3000/api/debtors/test-token');
+    const response = await GET(request, { params: { token: 'test-token' } });
+    
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.firstName).toBe('John');
+  });
+
+  it('should update debtor information', async () => {
+    const mockDebt = { id: '456', debtorId: '123' };
+    const mockUpdatedDebtor = { id: '123', phone: '555-0123' };
+
+    (prisma.debt.findUnique as jest.Mock).mockResolvedValue(mockDebt);
+    (prisma.debtor.update as jest.Mock).mockResolvedValue(mockUpdatedDebtor);
+
+    const request = new NextRequest('http://localhost:3000/api/debtors/test-token', {
+      method: 'PUT',
+      body: JSON.stringify({ phone: '555-0123' }),
     });
 
-    await handler(req, res);
+    const response = await PUT(request, { params: { token: 'test-token' } });
+    
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.phone).toBe('555-0123');
+  });
+});
+```
 
-    expect(res._getStatusCode()).toBe(200);
-    const data = JSON.parse(res._getData());
-    expect(data.firstName).toBe('John');
+**Component Tests:**
+```typescript
+// __tests__/components/debtor-page.test.tsx
+import { render, screen } from '@testing-library/react';
+import DebtorPage from '@/app/debtor/[token]/page';
+
+// Mock the database utilities
+jest.mock('@/lib/db-utils', () => ({
+  getDebtorByToken: jest.fn(),
+}));
+
+describe('DebtorPage', () => {
+  it('renders debtor information', async () => {
+    const mockDebtor = {
+      firstName: 'John',
+      lastName: 'Doe',
+      debts: [{
+        totalOwed: 1000,
+        amountPaid: 200,
+        uniqueToken: 'test-token',
+      }],
+    };
+
+    (require('@/lib/db-utils').getDebtorByToken as jest.Mock)
+      .mockResolvedValue(mockDebtor);
+
+    const props = { params: { token: 'test-token' } };
+    render(await DebtorPage(props));
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('$800.00')).toBeInTheDocument(); // remaining balance
+  });
+});
+```
+
+**Integration Tests:**
+```typescript
+// __tests__/integration/payment-flow.test.ts
+import { testApiHandler } from 'next-test-api-route-handler';
+import * as paymentsHandler from '@/app/api/payments/create-link/route';
+
+describe('Payment Flow Integration', () => {
+  it('should create payment link and process payment', async () => {
+    await testApiHandler({
+      appHandler: paymentsHandler,
+      test: async ({ fetch }) => {
+        const res = await fetch({
+          method: 'POST',
+          body: JSON.stringify({
+            debtId: 'test-debt-id',
+            amount: 500,
+            type: 'partial',
+          }),
+        });
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.url).toContain('https://checkout.stripe.com');
+      },
+    });
   });
 });
 ```
@@ -796,34 +1016,27 @@ export default function errorHandler(err: Error, req: NextApiRequest, res: NextA
 
 ### Docker Configuration
 
-**Go API Dockerfile:**
-```dockerfile
-FROM golang:1.21-alpine AS builder
-
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/main .
-EXPOSE 8080
-CMD ["./main"]
-```
-
 **Next.js Dockerfile:**
 ```dockerfile
-FROM node:18-alpine AS builder
+FROM node:18-alpine AS dependencies
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build the application
 RUN npm run build
 
 FROM node:18-alpine AS runner
@@ -832,9 +1045,18 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Copy necessary files
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/prisma ./prisma
+
+# Install production dependencies for Prisma
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Generate Prisma client in production
+RUN npx prisma generate
 
 EXPOSE 3000
 CMD ["node", "server.js"]
@@ -857,109 +1079,222 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d coldet"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  api:
-    build: ./api
-    environment:
-      DATABASE_URL: postgres://user:password@database:5432/coldet?sslmode=disable
-      PORT: 8080
-    depends_on:
-      - database
-    ports:
-      - "8080:8080"
-
-  frontend:
+  app:
     build: .
     environment:
-      NEXT_PUBLIC_API_URL: http://api:8080
       DATABASE_URL: postgres://user:password@database:5432/coldet?sslmode=disable
+      JWT_SECRET: your-super-secret-jwt-key
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
-      - database
-      - api
+      database:
+        condition: service_healthy
     ports:
       - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+```
+
+### Production Deployment
+
+**Vercel Deployment (Recommended):**
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy to Vercel
+vercel --prod
+
+# Environment variables to set in Vercel dashboard:
+# - DATABASE_URL
+# - JWT_SECRET
+# - STRIPE_SECRET_KEY
+# - STRIPE_WEBHOOK_SECRET
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - TWILIO_ACCOUNT_SID
+# - TWILIO_AUTH_TOKEN
+# - OPENAI_API_KEY
+```
+
+**Railway Deployment:**
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Deploy to Railway
+railway login
+railway init
+railway up
+
+# Set environment variables
+railway variables set DATABASE_URL=postgresql://...
+railway variables set JWT_SECRET=your-secret
+# ... other environment variables
+```
+
+**Self-Hosted Deployment:**
+```bash
+# Clone repository
+git clone https://github.com/your-username/coldet.git
+cd coldet
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your values
+
+# Build application
+npm run build
+
+# Start production server
+npm start
 ```
 
 ## Implementation Recommendations
 
 ### Recommended Architecture
 
-**Phase 1: Hybrid Approach (Current + Enhancements)**
-- Keep Go API for webhooks and complex operations
-- Add Next.js API routes for simple CRUD operations
-- Implement direct database access in Next.js for read-heavy operations
-- Use traditional REST API calls where tRPC isn't needed
+**Phase 1: Core Implementation (Weeks 1-4)**
+- Set up full Prisma schema and database migrations
+- Implement essential API routes (debtors, payments, communications)
+- Create webhook handlers for Stripe and AWS SES
+- Build basic debtor-facing pages
+- Add JWT authentication
 
-**Phase 2: tRPC Integration**
-- Gradually migrate REST endpoints to tRPC
-- Implement type-safe API calls
-- Add automatic API documentation
-- Maintain webhooks in Go for security
+**Phase 2: AI Integration (Weeks 5-8)**
+- Integrate OpenAI for automated responses
+- Implement AI-powered email generation
+- Add sentiment analysis for communications
+- Create compliance checking system
+- Build admin dashboard for monitoring
 
-**Phase 3: Full Integration**
-- Optimize database queries with proper indexing
-- Add caching layers (Redis)
-- Implement comprehensive monitoring
-- Add automated testing
+**Phase 3: Advanced Features (Weeks 9-12)**
+- Add Redis caching for performance
+- Implement real-time analytics
+- Create payment plan automation
+- Add comprehensive testing suite
+- Optimize database queries
 
-### Technology Stack Recommendations
+### Technology Stack
 
-**Required Dependencies:**
+**Core Dependencies:**
 ```json
 {
   "dependencies": {
-    "@trpc/client": "^10.45.0",
-    "@trpc/next": "^10.45.0",
-    "@trpc/react-query": "^10.45.0",
-    "@trpc/server": "^10.45.0",
     "@prisma/client": "^5.7.0",
     "prisma": "^5.7.0",
-    "zod": "^3.22.4",
-    "react-query": "^3.39.3"
+    "next": "15.3.4",
+    "react": "^19.1.0",
+    "typescript": "^5.8.3",
+    "zod": "^3.25.67",
+    "jsonwebtoken": "^9.0.2",
+    "stripe": "^14.21.0",
+    "openai": "^4.28.0",
+    "@aws-sdk/client-ses": "^3.490.0",
+    "twilio": "^4.20.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "jest": "^29.7.0",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.2.0",
+    "next-test-api-route-handler": "^4.0.8"
   }
 }
 ```
 
-**Go Dependencies:**
-```go
-module coldet-api
+**Additional Integrations:**
+- **Database**: PostgreSQL with Prisma ORM
+- **Payments**: Stripe for payment processing
+- **Email**: AWS SES for transactional emails
+- **SMS/Voice**: Twilio for communications
+- **AI**: OpenAI for automated responses
+- **Caching**: Redis for performance (optional)
+- **Monitoring**: Vercel Analytics or custom logging
 
-go 1.21
+### Environment Configuration
 
-require (
-    github.com/gin-gonic/gin v1.9.1
-    github.com/golang-jwt/jwt/v5 v5.2.0
-    github.com/redis/go-redis/v9 v9.3.1
-    github.com/sirupsen/logrus v1.9.3
-    github.com/stripe/stripe-go/v76 v76.16.0
-    gorm.io/driver/postgres v1.5.4
-    gorm.io/gorm v1.25.5
-)
+**Required Environment Variables:**
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/coldet
+
+# Authentication
+JWT_SECRET=your-super-secret-jwt-key
+
+# Stripe
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+# AWS SES
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+
+# Twilio
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=+1234567890
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# Optional: Redis for caching
+REDIS_URL=redis://localhost:6379
 ```
 
 ## Next Steps
 
 1. **Immediate (Week 1)**:
-   - Set up Prisma schema matching Go GORM models
-   - Create tRPC client setup in Next.js
-   - Implement basic tRPC routes in Go
+   - Set up Next.js project with Prisma
+   - Create database schema and migrations
+   - Implement basic API routes structure
+   - Set up environment configuration
 
 2. **Short-term (Weeks 2-4)**:
-   - Migrate critical API endpoints to tRPC
-   - Add database connection pooling
-   - Implement authentication middleware
+   - Build debtor management API routes
+   - Create payment processing with Stripe
+   - Implement webhook handlers
+   - Add authentication middleware
 
 3. **Medium-term (Weeks 5-8)**:
-   - Add caching layers
-   - Implement comprehensive error handling
-   - Add monitoring and logging
+   - Integrate AI for automated communications
+   - Build admin dashboard
+   - Add comprehensive error handling
+   - Implement monitoring and logging
 
 4. **Long-term (Weeks 9-12)**:
-   - Performance optimization
+   - Performance optimization with caching
    - Advanced security features
    - Automated testing suite
+   - Production deployment setup
 
-This architecture provides a solid foundation for the COLDET platform, balancing performance, security, and developer experience while maintaining the flexibility to evolve with business requirements.
+### Benefits of This Simplified Architecture
+
+✅ **Faster Development**: Single codebase reduces complexity  
+✅ **Type Safety**: Full TypeScript coverage from database to UI  
+✅ **Simplified Deployment**: One application to deploy and maintain  
+✅ **Better Developer Experience**: Hot reload for both frontend and API changes  
+✅ **Cost Effective**: Single server instance instead of multiple services  
+✅ **Easier Testing**: Unified testing strategy for the entire application
+
+This streamlined architecture eliminates the complexity of managing separate Go and Next.js applications while maintaining all the core functionality needed for the COLDET debt collection platform.
