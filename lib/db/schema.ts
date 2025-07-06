@@ -14,7 +14,6 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 
-// Debtors
 export const debtors = pgTable('debtors', {
 	id: uuid('id').primaryKey().notNull().defaultRandom(),
 	firstName: varchar('first_name', { length: 100 }).notNull(),
@@ -35,7 +34,6 @@ export const debtors = pgTable('debtors', {
 export type Debtor = InferSelectModel<typeof debtors>;
 export type PartialDebtor = Partial<Debtor>;
 
-// Debts
 export const debts = pgTable(
 	'debts',
 	{
@@ -51,15 +49,11 @@ export const debts = pgTable(
 			.notNull()
 			.default('0'),
 		status: varchar('status', { length: 20 }).notNull().default('active'),
-		uniqueToken: varchar('unique_token', { length: 50 }).notNull().unique(),
-		totalContacts: integer('total_contacts').notNull().default(0),
 		debtDate: timestamp('debt_date'),
-		importedAt: timestamp('imported_at').defaultNow(),
 		createdAt: timestamp('created_at').defaultNow(),
 		updatedAt: timestamp('updated_at').defaultNow(),
 	},
 	(table) => ({
-		uniqueTokenIdx: uniqueIndex('idx_debts_token').on(table.uniqueToken),
 		debtorStatusIdx: uniqueIndex('idx_debts_debtor_status').on(
 			table.debtorId,
 			table.status
@@ -69,7 +63,6 @@ export const debts = pgTable(
 export type Debt = InferSelectModel<typeof debts>;
 export type PartialDebt = Partial<Debt>;
 
-// Emails
 export const emails = pgTable(
 	'emails',
 	{
@@ -97,7 +90,6 @@ export const emails = pgTable(
 export type Email = InferSelectModel<typeof emails>;
 export type PartialEmail = Partial<Email>;
 
-// Calls
 export const calls = pgTable(
 	'calls',
 	{
@@ -150,7 +142,6 @@ export const sms = pgTable(
 export type SMS = InferSelectModel<typeof sms>;
 export type PartialSMS = Partial<SMS>;
 
-// Payments
 export const payments = pgTable(
 	'payments',
 	{
