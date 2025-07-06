@@ -7,11 +7,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, amount, currency = 'usd' } = await request.json();
+    const { token, amount, currency = 'usd' } = await request.json();
 
-    if (!id || !amount) {
+    if (!token || !amount) {
       return NextResponse.json(
-        { error: 'Missing required fields: id and amount' },
+        { error: 'Missing required fields: token and amount' },
         { status: 400 }
       );
     }
@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: currency,
             product_data: {
-              name: `Payment for ${id}`,
+              name: `Account Resolution - ${token}`,
+              description: 'Debt settlement payment',
             },
             unit_amount: amount, // Amount in cents
           },
@@ -31,10 +32,17 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_URL}/pay/${id}/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_URL}/pay/${id}`,
+      success_url: `${process.env.NEXT_PUBLIC_URL}/pay/${token}/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_URL}/pay/${token}`,
       metadata: {
-        paymentId: id,
+        accountToken: token,
+        paymentType: 'debt_settlement',
+      },
+      // Enable payment methods for mobile optimization
+      payment_method_options: {
+        card: {
+          request_three_d_secure: 'automatic',
+        },
       },
     });
 
