@@ -42,3 +42,6 @@ next-env.d.ts
 
 /.obsidian
 certificates
+
+# Ignore Drizzle migration artifacts
+lib/db/migrations/schema.ts
