@@ -44,4 +44,4 @@ next-env.d.ts
 certificates
 
 # Ignore Drizzle migration artifacts
-lib/db/migrations/schema.ts
+lib/db/migrations
