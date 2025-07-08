@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Download, Mail, Phone } from 'lucide-react';
+import { CheckCircle, Download } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Confetti, type ConfettiRef } from '@/components/magicui/confetti';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import type { Debt } from '@/lib/db/schema';
 
 export default function SuccessContent({ debt }: { debt: Debt }) {
@@ -22,9 +21,9 @@ export default function SuccessContent({ debt }: { debt: Debt }) {
 	}, []);
 
 	return (
-		<div className='relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4'>
+		<div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
 			<Confetti
-				className='absolute top-0 left-0 z-0 h-full w-full'
+				className="absolute top-0 left-0 z-0 h-full w-full"
 				ref={confettiRef}
 			/>
 			<Card className="relative z-10 w-full max-w-md text-center">
@@ -39,7 +38,7 @@ export default function SuccessContent({ debt }: { debt: Debt }) {
 						Your account has been resolved. Thank you for your payment.
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-6">
+				<CardContent className="space-y-4">
 					<div className="space-y-2">
 						<div className="flex justify-between text-sm">
 							<span className="text-muted-foreground">Account:</span>
@@ -65,9 +64,8 @@ export default function SuccessContent({ debt }: { debt: Debt }) {
 							email confirmation shortly with your receipt.
 						</p>
 					</div>
-					<Separator />
 
-					<div className="space-y-3">
+					<div>
 						<Button
 							className="w-full cursor-pointer"
 							size="lg"
@@ -76,21 +74,6 @@ export default function SuccessContent({ debt }: { debt: Debt }) {
 							<Download className="mr-2 h-4 w-4" />
 							Download Receipt
 						</Button>
-
-						<div className="text-muted-foreground text-sm">
-							Need help? Contact us:
-						</div>
-
-						<div className="grid grid-cols-2 gap-2">
-							<Button className="cursor-pointer" size="sm" variant="outline">
-								<Phone className="mr-2 h-4 w-4" />
-								Call Support
-							</Button>
-							<Button className="cursor-pointer" size="sm" variant="outline">
-								<Mail className="mr-2 h-4 w-4" />
-								Email Support
-							</Button>
-						</div>
 					</div>
 				</CardContent>
 			</Card>

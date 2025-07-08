@@ -1,7 +1,7 @@
 'use client';
 
 import { loadStripe } from '@stripe/stripe-js';
-import { CreditCard, Loader2, Mail, Phone, Shield } from 'lucide-react';
+import { CreditCard, Loader2, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,11 +11,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import type { Debt } from '@/lib/db/schema';
 
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+	throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set');
+}
+
 const stripePromise = loadStripe(
-	process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
+	process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 );
 
 export default function PaymentForm({ debt }: { debt: Debt }) {
@@ -58,10 +61,6 @@ export default function PaymentForm({ debt }: { debt: Debt }) {
 		}
 	};
 
-	const handleContactUs = () => {
-		// Implement contact logic if needed
-	};
-
 	return (
 		<Card className="w-full max-w-md">
 			<CardHeader className="text-center">
@@ -75,12 +74,8 @@ export default function PaymentForm({ debt }: { debt: Debt }) {
 			<CardContent className="space-y-6">
 				<div className="space-y-2">
 					<div className="flex justify-between text-sm">
-						<span className="text-muted-foreground">Account:</span>
-						<span className="font-medium">{debt.id}</span>
-					</div>
-					<div className="flex justify-between text-sm">
-						<span className="text-muted-foreground">Amount Due:</span>
-						<span className="font-medium text-lg">
+						<span className="text-base text-muted-foreground">Amount Due:</span>
+						<span className="font-medium text-base">
 							${Number(debt.totalOwed).toFixed(2)}
 						</span>
 					</div>
@@ -111,32 +106,6 @@ export default function PaymentForm({ debt }: { debt: Debt }) {
 					</Button>
 					<div className="text-center text-muted-foreground text-xs">
 						Supports Apple Pay, Google Pay, and all major cards
-					</div>
-				</div>
-				<Separator />
-				<div>
-					<div className="mb-4 text-center text-muted-foreground text-sm">
-						Need help? Contact us:
-					</div>
-					<div className="grid grid-cols-2 gap-2 text-sm">
-						<Button
-							className="w-full cursor-pointer"
-							onClick={handleContactUs}
-							size="sm"
-							variant="outline"
-						>
-							<Phone className="mr-2 h-4 w-4" />
-							Call Us
-						</Button>
-						<Button
-							className="w-full cursor-pointer"
-							onClick={handleContactUs}
-							size="sm"
-							variant="outline"
-						>
-							<Mail className="mr-2 h-4 w-4" />
-							Email
-						</Button>
 					</div>
 				</div>
 				<div className="flex items-center justify-center space-x-2 text-muted-foreground text-xs">

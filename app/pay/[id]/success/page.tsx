@@ -12,5 +12,10 @@ export default async function SuccessPage({
 	if (!debt) {
 		notFound();
 	}
+
+	if (debt.status !== 'resolved') {
+		notFound();
+	}
+
 	return <SuccessContent debt={debt} />;
 }
