@@ -45,3 +45,5 @@ certificates
 
 # Ignore Drizzle migration artifacts
 **/lib/db/migrations
+
+/scripts
