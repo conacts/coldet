@@ -26,6 +26,7 @@ interface SESMessage {
 export async function POST(request: NextRequest) {
 	try {
 		const snsPayload = await request.json();
+		console.log(snsPayload);
 		const message = JSON.parse(snsPayload.Message);
 		const eventType = message.eventType?.toLowerCase();
 		const messageId = message.mail?.messageId;
