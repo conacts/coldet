@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import type { Email } from '@/lib/db/schema';
 import { emails } from '@/lib/db/schema';
@@ -62,5 +62,41 @@ export async function getEmailByMessageId(
 		.from(emails)
 		.where(eq(emails.messageId, messageId))
 		.limit(1);
+	return result[0] ?? null;
+}
+
+export async function updateEmailOpened(messageId: string): Promise<Email | null> {
+	const result = await db
+		.update(emails)
+		.set({ emailOpened: true })
+		.where(eq(emails.messageId, messageId))
+		.returning();
+	return result[0] ?? null;
+}
+
+export async function updateEmailClicked(messageId: string): Promise<Email | null> {
+	const result = await db
+		.update(emails)
+		.set({ emailClicked: true })
+		.where(eq(emails.messageId, messageId))
+		.returning();
+	return result[0] ?? null;
+}
+
+export async function updateEmailBounced(messageId: string): Promise<Email | null> {
+	const result = await db
+		.update(emails)
+		.set({ emailBounced: true })
+		.where(eq(emails.messageId, messageId))
+		.returning();
+	return result[0] ?? null;
+}
+
+export async function updateEmailComplained(messageId: string): Promise<Email | null> {
+	const result = await db
+		.update(emails)
+		.set({ emailComplained: true })
+		.where(eq(emails.messageId, messageId))
+		.returning();
 	return result[0] ?? null;
 }

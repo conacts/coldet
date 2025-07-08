@@ -1,4 +1,10 @@
 import type { NextRequest } from 'next/server';
+import {
+	updateEmailBounced,
+	updateEmailClicked,
+	updateEmailComplained,
+	updateEmailOpened,
+} from '@/lib/db/emails';
 
 interface SESMessage {
 	eventType: string;
@@ -7,6 +13,8 @@ interface SESMessage {
 	};
 	open?: {
 		timestamp: string;
+		userAgent: string;
+		ipAddress: string;
 	};
 	click?: {
 		link: string;
@@ -26,40 +34,34 @@ interface SESMessage {
 export async function POST(request: NextRequest) {
 	try {
 		const snsPayload = await request.json();
-		console.log(snsPayload);
-		const message = JSON.parse(snsPayload.Message);
+		const message: SESMessage = JSON.parse(snsPayload.Message);
 		const eventType = message.eventType?.toLowerCase();
 		const messageId = message.mail?.messageId;
 
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.log(`🔥 OUTBOUND WEBHOOK TRIGGERED - ${new Date().toISOString()}`);
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.log(`📧 Message ID: ${messageId}`);
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.log(`📋 Event Type: ${eventType}`);
-
 		switch (eventType) {
 			case 'open':
-				handleOpenEvent(message, messageId);
+				await handleOpenEvent(messageId);
 				break;
 			case 'click':
-				handleClickEvent(message, messageId);
+				await handleClickEvent(messageId);
 				break;
 			case 'bounce':
-				handleBounceEvent(message, messageId);
+				await handleBounceEvent(messageId);
 				break;
 			case 'complaint':
-				handleComplaintEvent(message, messageId);
+				await handleComplaintEvent(messageId);
 				break;
 			case 'send':
 			case 'delivery':
 				// Log but don't need special handling for send/delivery events
 				// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-				console.log(`✅ ${eventType.toUpperCase()} event logged for ${messageId}`);
+				console.log(
+					`✅ ${eventType.toUpperCase()} event logged for ${messageId}`
+				);
 				break;
 			default:
 				// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-				console.log(`❓ Unknown event type: ${eventType}`);
+				console.error(`❓ Unknown event type: ${eventType}`);
 		}
 
 		return new Response('Outbound email webhook processed', { status: 200 });
@@ -70,44 +72,46 @@ export async function POST(request: NextRequest) {
 	}
 }
 
-function handleOpenEvent(message: SESMessage, messageId: string) {
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`👀 EMAIL OPENED - ${messageId}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🕐 Opened at: ${message.open?.timestamp}`);
-	// TODO: Update database to mark email as opened
+async function handleOpenEvent(messageId: string): Promise<void> {
+	try {
+		const updatedEmail = await updateEmailOpened(messageId);
+		if (!updatedEmail) {
+			throw new Error(`Email not found in database for messageId: ${messageId}`);
+		}
+	} catch (error) {
+		throw new Error(`Failed to update email opened status: ${error}`);
+	}
 }
 
-function handleClickEvent(message: SESMessage, messageId: string) {
-	const clickedLink = message.click?.link;
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🔗 LINK CLICKED - ${messageId}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🌐 Clicked Link: ${clickedLink}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🕐 Clicked at: ${message.click?.timestamp}`);
-	// TODO: Update database to mark email as clicked
+async function handleClickEvent(messageId: string): Promise<void> {
+	try {
+		const updatedEmail = await updateEmailClicked(messageId);
+		if (!updatedEmail) {
+			throw new Error(`Email not found in database for messageId: ${messageId}`);
+		}
+	} catch (error) {
+		throw new Error(`Failed to update email clicked status: ${error}`);
+	}
 }
 
-function handleBounceEvent(message: SESMessage, messageId: string) {
-	const bounceType = message.bounce?.bounceType;
-	const bounceSubType = message.bounce?.bounceSubType;
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`💥 EMAIL BOUNCED - ${messageId}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`📋 Bounce Type: ${bounceType} (${bounceSubType})`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🕐 Bounced at: ${message.bounce?.timestamp}`);
-	// TODO: Update database to mark email as bounced
+async function handleBounceEvent(messageId: string): Promise<void> {
+	try {
+		const updatedEmail = await updateEmailBounced(messageId);
+		if (!updatedEmail) {
+			throw new Error(`Email not found in database for messageId: ${messageId}`);
+		}
+	} catch (error) {
+		throw new Error(`Failed to update email bounced status: ${error}`);
+	}
 }
 
-function handleComplaintEvent(message: SESMessage, messageId: string) {
-	const complaintType = message.complaint?.complaintFeedbackType;
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`😡 SPAM COMPLAINT - ${messageId}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`📋 Complaint Type: ${complaintType}`);
-	// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-	console.log(`🕐 Complained at: ${message.complaint?.timestamp}`);
-	// TODO: Update database to mark email as complained
-} 
+async function handleComplaintEvent(messageId: string): Promise<void> {
+	try {
+		const updatedEmail = await updateEmailComplained(messageId);
+		if (!updatedEmail) {
+			throw new Error(`Email not found in database for messageId: ${messageId}`);
+		}
+	} catch (error) {
+		throw new Error(`Failed to update email complained status: ${error}`);
+	}
+}
