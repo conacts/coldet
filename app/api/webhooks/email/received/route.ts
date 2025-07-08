@@ -4,6 +4,7 @@ import type { SesSnsNotification } from '@/types/aws-ses';
 
 export async function POST(request: NextRequest) {
 	const snsPayload = await request.json();
+	console.log(snsPayload);
 	try {
 		const sesMessage = JSON.parse(snsPayload.Message) as SesSnsNotification;
 		if (sesMessage.notificationType !== 'Received') {

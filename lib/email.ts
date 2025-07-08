@@ -1,3 +1,5 @@
+import { render } from '@react-email/render';
+import { EmailResponseEmail } from '@/emails/email-response';
 import { getDebtById, getDebtsByDebtorEmail } from '@/lib/db/debts';
 import {
 	createThread,
@@ -6,12 +8,23 @@ import {
 	getThreadByMessageId,
 } from '@/lib/db/email-threads';
 import { createEmail } from '@/lib/db/emails';
-import type { Email, EmailThread } from '@/lib/db/schema';
-import { sendEmailResponse } from '@/lib/email-sender';
+import type { Debt, Email, EmailThread } from '@/lib/db/schema';
+import type { EmailResponse } from '@/lib/llms';
 import { generateResponseEmail } from '@/lib/llms';
+import { generateUUID } from '@/lib/utils';
 import type { SesSnsNotification } from '@/types/aws-ses';
+import { sendEmail } from './aws/ses';
 
 const WHITESPACE_REGEX = /\s+/;
+
+export interface SendEmailResponseParams {
+	to: string;
+	emailResponse: EmailResponse;
+	thread: EmailThread;
+	debt: Debt;
+	inReplyToEmail?: Email;
+	emailHistory?: Email[];
+}
 
 export async function handleReceivedEmail(
 	notification: SesSnsNotification
@@ -113,4 +126,62 @@ export function parseInboundEmailContent(content?: string): string {
 		throw new Error('Email content is required but was not provided');
 	}
 	return content;
+}
+
+export async function sendEmailResponse({
+	to,
+	emailResponse,
+	thread,
+	debt,
+	inReplyToEmail,
+	emailHistory = [],
+}: SendEmailResponseParams): Promise<Email> {
+	const fromEmail = process.env.SES_FROM_EMAIL || 'noreply@yourdomain.com';
+	const replyToEmail = process.env.SES_REPLY_TO_EMAIL || fromEmail;
+
+	let inReplyTo: string | undefined;
+	let references: string | undefined;
+
+	// TODO: should this just be the email thread id?
+	if (inReplyToEmail?.messageId) {
+		inReplyTo = inReplyToEmail.messageId;
+
+		// Build references chain from email history
+		const messageIds = emailHistory
+			.filter((email) => email.messageId)
+			.map((email) => email.messageId)
+			.filter(Boolean) as string[];
+
+		if (messageIds.length > 0) {
+			references = messageIds.join(' ');
+		}
+	}
+
+	const messageId = generateUUID();
+	const emailHtml = await render(EmailResponseEmail({ emailResponse }));
+
+	await sendEmail({
+		to,
+		from: fromEmail,
+		replyTo: replyToEmail,
+		subject: emailResponse.subject,
+		htmlBody: emailHtml,
+		messageId,
+		inReplyTo,
+		references,
+		configurationSetName: 'email-tracking-config',
+	});
+
+	const savedEmail = await createEmail({
+		debtId: debt.id,
+		threadId: thread.id,
+		messageId,
+		direction: 'outbound',
+		subject: emailResponse.subject,
+		content: emailHtml,
+		aiGenerated: true,
+		complianceChecked: true,
+	});
+
+	return savedEmail;
 }

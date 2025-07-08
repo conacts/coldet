@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import type { Email } from '@/lib/db/schema';
 import { emails } from '@/lib/db/schema';
@@ -46,11 +46,21 @@ export async function createEmail({
 }
 
 export async function getEmailById(id: string): Promise<Email | null> {
-	const result = await db.select().from(emails).where(eq(emails.id, id)).limit(1);
+	const result = await db
+		.select()
+		.from(emails)
+		.where(eq(emails.id, id))
+		.limit(1);
 	return result[0] ?? null;
 }
 
-export async function getEmailByMessageId(messageId: string): Promise<Email | null> {
-	const result = await db.select().from(emails).where(eq(emails.messageId, messageId)).limit(1);
+export async function getEmailByMessageId(
+	messageId: string
+): Promise<Email | null> {
+	const result = await db
+		.select()
+		.from(emails)
+		.where(eq(emails.messageId, messageId))
+		.limit(1);
 	return result[0] ?? null;
 }

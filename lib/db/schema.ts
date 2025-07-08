@@ -79,6 +79,8 @@ export const emails = pgTable(
 		content: text('content'),
 		emailOpened: boolean('email_opened').notNull().default(false),
 		emailClicked: boolean('email_clicked').notNull().default(false),
+		emailBounced: boolean('email_bounced').notNull().default(false),
+		emailComplained: boolean('email_complained').notNull().default(false),
 		aiGenerated: boolean('ai_generated').notNull().default(false),
 		complianceChecked: boolean('compliance_checked').notNull().default(true),
 		timestamp: timestamp('timestamp').defaultNow(),

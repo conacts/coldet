@@ -1,6 +1,11 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { type Email, type EmailThread, emails, emailThreads } from '@/lib/db/schema';
+import {
+	type Email,
+	type EmailThread,
+	emails,
+	emailThreads,
+} from '@/lib/db/schema';
 
 export async function getThreadByMessageId(
 	messageId: string
