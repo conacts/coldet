@@ -5,38 +5,14 @@ import {
 	updateEmailComplained,
 	updateEmailOpened,
 } from '@/lib/db/emails';
-
-interface SESMessage {
-	eventType: string;
-	mail: {
-		messageId: string;
-	};
-	open?: {
-		timestamp: string;
-		userAgent: string;
-		ipAddress: string;
-	};
-	click?: {
-		link: string;
-		timestamp: string;
-	};
-	bounce?: {
-		bounceType: string;
-		bounceSubType: string;
-		timestamp: string;
-	};
-	complaint?: {
-		complaintFeedbackType: string;
-		timestamp: string;
-	};
-}
+import type { SesMessage, SnsNotification } from '@/types/aws-ses';
 
 export async function POST(request: NextRequest) {
 	try {
-		const snsPayload = await request.json();
-		const message: SESMessage = JSON.parse(snsPayload.Message);
+		const snsPayload: SnsNotification = await request.json();
+		const messageId = snsPayload.MessageId;
+		const message: SesMessage = JSON.parse(snsPayload.Message);
 		const eventType = message.eventType?.toLowerCase();
-		const messageId = message.mail?.messageId;
 
 		switch (eventType) {
 			case 'open':
@@ -52,12 +28,12 @@ export async function POST(request: NextRequest) {
 				await handleComplaintEvent(messageId);
 				break;
 			case 'send':
-			case 'delivery':
-				// Log but don't need special handling for send/delivery events
 				// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-				console.log(
-					`✅ ${eventType.toUpperCase()} event logged for ${messageId}`
-				);
+				console.log('Send event logged');
+				break;
+			case 'delivery':
+				// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+				console.log('Delivery event logged');
 				break;
 			default:
 				// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
@@ -74,10 +50,7 @@ export async function POST(request: NextRequest) {
 
 async function handleOpenEvent(messageId: string): Promise<void> {
 	try {
-		const updatedEmail = await updateEmailOpened(messageId);
-		if (!updatedEmail) {
-			throw new Error(`Email not found in database for messageId: ${messageId}`);
-		}
+		await updateEmailOpened(messageId);
 	} catch (error) {
 		throw new Error(`Failed to update email opened status: ${error}`);
 	}
@@ -85,10 +58,7 @@ async function handleOpenEvent(messageId: string): Promise<void> {
 
 async function handleClickEvent(messageId: string): Promise<void> {
 	try {
-		const updatedEmail = await updateEmailClicked(messageId);
-		if (!updatedEmail) {
-			throw new Error(`Email not found in database for messageId: ${messageId}`);
-		}
+		await updateEmailClicked(messageId);
 	} catch (error) {
 		throw new Error(`Failed to update email clicked status: ${error}`);
 	}
@@ -96,10 +66,7 @@ async function handleClickEvent(messageId: string): Promise<void> {
 
 async function handleBounceEvent(messageId: string): Promise<void> {
 	try {
-		const updatedEmail = await updateEmailBounced(messageId);
-		if (!updatedEmail) {
-			throw new Error(`Email not found in database for messageId: ${messageId}`);
-		}
+		await updateEmailBounced(messageId);
 	} catch (error) {
 		throw new Error(`Failed to update email bounced status: ${error}`);
 	}
@@ -107,10 +74,7 @@ async function handleBounceEvent(messageId: string): Promise<void> {
 
 async function handleComplaintEvent(messageId: string): Promise<void> {
 	try {
-		const updatedEmail = await updateEmailComplained(messageId);
-		if (!updatedEmail) {
-			throw new Error(`Email not found in database for messageId: ${messageId}`);
-		}
+		await updateEmailComplained(messageId);
 	} catch (error) {
 		throw new Error(`Failed to update email complained status: ${error}`);
 	}

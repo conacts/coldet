@@ -5,6 +5,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import {
 	boolean,
 	decimal,
+	index,
 	integer,
 	pgTable,
 	text,
@@ -28,6 +29,7 @@ export const debtors = pgTable('debtors', {
 	phoneConsent: boolean('phone_consent').notNull().default(false),
 	emailConsent: boolean('email_consent').notNull().default(true),
 	dncRegistered: boolean('dnc_registered').notNull().default(false),
+	currentlyCollecting: boolean('currently_collecting').notNull().default(false),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -44,10 +46,12 @@ export const debts = pgTable(
 		originalCreditor: varchar('original_creditor', { length: 200 }).notNull(),
 		totalOwed: decimal('total_owed', { precision: 10, scale: 2 })
 			.notNull()
-			.default('0'),
+			.default('0')
+			.$type<number>(),
 		amountPaid: decimal('amount_paid', { precision: 10, scale: 2 })
 			.notNull()
-			.default('0'),
+			.default('0')
+			.$type<number>(),
 		status: varchar('status', { length: 20 }).notNull().default('active'),
 		debtDate: timestamp('debt_date'),
 		createdAt: timestamp('created_at').defaultNow(),
@@ -83,13 +87,16 @@ export const emails = pgTable(
 		emailComplained: boolean('email_complained').notNull().default(false),
 		aiGenerated: boolean('ai_generated').notNull().default(false),
 		complianceChecked: boolean('compliance_checked').notNull().default(true),
+		// NOTE: this should a messageId, maybe we index it/force this to be unique or something
+		// NOTE: this works for now
+		replyTo: varchar('reply_to', { length: 255 }),
 		timestamp: timestamp('timestamp').defaultNow(),
 		createdAt: timestamp('created_at').defaultNow(),
 	},
 	(table) => ({
-		debtIdx: uniqueIndex('idx_emails_debt').on(table.debtId),
-		timestampIdx: uniqueIndex('idx_emails_timestamp').on(table.timestamp),
-		threadTimestampIdx: uniqueIndex('idx_emails_thread_timestamp').on(table.threadId, table.timestamp),
+		debtIdx: index('idx_emails_debt').on(table.debtId),
+		timestampIdx: index('idx_emails_timestamp').on(table.timestamp),
+		threadTimestampIdx: index('idx_emails_thread_timestamp').on(table.threadId, table.timestamp),
 		messageIdIdx: uniqueIndex('idx_emails_message_id').on(table.messageId),
 	})
 );
@@ -108,7 +115,7 @@ export const emailThreads = pgTable(
 		updatedAt: timestamp('updated_at').defaultNow(),
 	},
 	(table) => ({
-		debtorIdx: uniqueIndex('idx_email_threads_debtor').on(table.debtorId),
+		debtorIdx: index('idx_email_threads_debtor').on(table.debtorId),
 	})
 );
 export type EmailThread = InferSelectModel<typeof emailThreads>;
@@ -173,7 +180,8 @@ export const payments = pgTable(
 		debtId: uuid('debt_id')
 			.notNull()
 			.references(() => debts.id, { onDelete: 'cascade' }),
-		amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+		// NOTE: could be string to prevent floating point precision issues, but I like using a number
+		amount: decimal('amount', { precision: 10, scale: 2 }).notNull().$type<number>(),
 		paymentType: varchar('payment_type', { length: 20 }),
 		stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 100 }),
 		stripeSessionId: varchar('stripe_session_id', { length: 100 }),

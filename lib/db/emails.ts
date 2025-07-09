@@ -15,6 +15,7 @@ export async function createEmail({
 	emailClicked = false,
 	aiGenerated = false,
 	complianceChecked = true,
+	replyTo,
 }: {
 	debtId: string;
 	threadId: string;
@@ -26,77 +27,121 @@ export async function createEmail({
 	emailClicked?: boolean;
 	aiGenerated?: boolean;
 	complianceChecked?: boolean;
+	replyTo?: string | null;
 }): Promise<Email> {
-	const [email] = await db
-		.insert(emails)
-		.values({
-			debtId,
-			threadId,
-			messageId,
-			direction,
-			subject,
-			content,
-			emailOpened,
-			emailClicked,
-			aiGenerated,
-			complianceChecked,
-		})
-		.returning();
-	return email;
+	try {
+		const [email] = await db
+			.insert(emails)
+			.values({
+				debtId,
+				threadId,
+				messageId,
+				direction,
+				subject,
+				content,
+				emailOpened,
+				emailClicked,
+				aiGenerated,
+				complianceChecked,
+				replyTo,
+			})
+			.returning();
+		return email;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error creating email', error);
+		throw error;
+	}
 }
 
 export async function getEmailById(id: string): Promise<Email | null> {
-	const result = await db
-		.select()
-		.from(emails)
-		.where(eq(emails.id, id))
-		.limit(1);
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.select()
+			.from(emails)
+			.where(eq(emails.id, id))
+			.limit(1);
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error getting email by id', error);
+		throw error;
+	}
 }
 
 export async function getEmailByMessageId(
 	messageId: string
 ): Promise<Email | null> {
-	const result = await db
-		.select()
-		.from(emails)
-		.where(eq(emails.messageId, messageId))
-		.limit(1);
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.select()
+			.from(emails)
+			.where(eq(emails.messageId, messageId))
+			.limit(1);
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error getting email by message id', error);
+		throw error;
+	}
 }
 
 export async function updateEmailOpened(messageId: string): Promise<Email | null> {
-	const result = await db
-		.update(emails)
-		.set({ emailOpened: true })
-		.where(eq(emails.messageId, messageId))
-		.returning();
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.update(emails)
+			.set({ emailOpened: true })
+			.where(eq(emails.messageId, messageId))
+			.returning();
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error updating email opened', error);
+		throw error;
+	}
 }
 
 export async function updateEmailClicked(messageId: string): Promise<Email | null> {
-	const result = await db
-		.update(emails)
-		.set({ emailClicked: true })
-		.where(eq(emails.messageId, messageId))
-		.returning();
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.update(emails)
+			.set({ emailClicked: true })
+			.where(eq(emails.messageId, messageId))
+			.returning();
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error updating email clicked', error);
+		throw error;
+	}
 }
 
 export async function updateEmailBounced(messageId: string): Promise<Email | null> {
-	const result = await db
-		.update(emails)
-		.set({ emailBounced: true })
-		.where(eq(emails.messageId, messageId))
-		.returning();
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.update(emails)
+			.set({ emailBounced: true })
+			.where(eq(emails.messageId, messageId))
+			.returning();
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error updating email bounced', error);
+		throw error;
+	}
 }
 
 export async function updateEmailComplained(messageId: string): Promise<Email | null> {
-	const result = await db
-		.update(emails)
-		.set({ emailComplained: true })
-		.where(eq(emails.messageId, messageId))
-		.returning();
-	return result[0] ?? null;
+	try {
+		const result = await db
+			.update(emails)
+			.set({ emailComplained: true })
+			.where(eq(emails.messageId, messageId))
+			.returning();
+		return result[0] ?? null;
+	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
+		console.error('Error updating email complained', error);
+		throw error;
+	}
 }

@@ -3,116 +3,265 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface TestingButtonsProps {
-	sendTestEmail: () => Promise<{ success: boolean; message: string }>;
-	sendBounceTestEmail: () => Promise<{ success: boolean; message: string }>;
-	sendComplaintTestEmail: () => Promise<{ success: boolean; message: string }>;
-	sendClickTestEmail: () => Promise<{ success: boolean; message: string }>;
+	createDebtorAction: (
+		formData: FormData
+	) => Promise<{ success: boolean; message: string; debtorId?: string }>;
+	createDebtAction: (
+		debtorId: string,
+		formData: FormData
+	) => Promise<{ success: boolean; message: string; debtId?: string }>;
+	sendTestEmailAction: (
+		debtorId: string,
+		debtId: string,
+		email: string
+	) => Promise<{ success: boolean; message: string }>;
 }
 
 export default function TestingButtons({
-	sendTestEmail,
-	sendBounceTestEmail,
-	sendComplaintTestEmail,
-	sendClickTestEmail,
+	createDebtorAction,
+	createDebtAction,
+	sendTestEmailAction,
 }: TestingButtonsProps) {
+	const [step, setStep] = useState(1);
 	const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
 		{}
 	);
 	const [messages, setMessages] = useState<Record<string, string>>({});
+	const [debtorId, setDebtorId] = useState<string>('');
+	const [debtId, setDebtId] = useState<string>('');
+	const [email, setEmail] = useState<string>('csheehan630@gmail.com');
 
-	const handleTest = async (
-		testType: string,
-		testFunction: () => Promise<{ success: boolean; message: string }>
-	) => {
-		setLoadingStates((prev) => ({ ...prev, [testType]: true }));
-		setMessages((prev) => ({ ...prev, [testType]: '' }));
+	const handleDebtorCreate = async (formData: FormData) => {
+		setLoadingStates((prev) => ({ ...prev, debtor: true }));
+		setMessages((prev) => ({ ...prev, debtor: '' }));
 
 		try {
-			const result = await testFunction();
-			setMessages((prev) => ({ ...prev, [testType]: result.message }));
+			const result = await createDebtorAction(formData);
+			setMessages((prev) => ({ ...prev, debtor: result.message }));
+
+			if (result.success && result.debtorId) {
+				setDebtorId(result.debtorId);
+				setStep(2);
+			}
 		} catch {
-			setMessages((prev) => ({ ...prev, [testType]: 'Failed to send email' }));
+			setMessages((prev) => ({ ...prev, debtor: 'Failed to create debtor' }));
 		} finally {
-			setLoadingStates((prev) => ({ ...prev, [testType]: false }));
+			setLoadingStates((prev) => ({ ...prev, debtor: false }));
 		}
 	};
 
-	const tests = [
-		{
-			key: 'normal',
-			title: 'Open Tracking Test',
-			description:
-				'Send email with tracking pixel. Open the email to trigger the /opened webhook.',
-			buttonText: 'Send Test Email',
-			testFunction: sendTestEmail,
-		},
-		{
-			key: 'click',
-			title: 'Click Tracking Test',
-			description:
-				'Send email with trackable links. Click any link to trigger the /clicked webhook.',
-			buttonText: 'Send Click Test',
-			testFunction: sendClickTestEmail,
-		},
-		{
-			key: 'bounce',
-			title: 'Bounce Test',
-			description:
-				'Send to AWS bounce simulator to trigger the /bounced webhook.',
-			buttonText: 'Send Bounce Test',
-			testFunction: sendBounceTestEmail,
-		},
-		{
-			key: 'complaint',
-			title: 'Complaint Test',
-			description:
-				'Send to AWS complaint simulator to trigger the /complained webhook.',
-			buttonText: 'Send Complaint Test',
-			testFunction: sendComplaintTestEmail,
-		},
-	];
+	const handleDebtCreate = async (formData: FormData) => {
+		setLoadingStates((prev) => ({ ...prev, debt: true }));
+		setMessages((prev) => ({ ...prev, debt: '' }));
+
+		try {
+			const result = await createDebtAction(debtorId, formData);
+			setMessages((prev) => ({ ...prev, debt: result.message }));
+
+			if (result.success && result.debtId) {
+				setDebtId(result.debtId);
+				setStep(3);
+			}
+		} catch {
+			setMessages((prev) => ({ ...prev, debt: 'Failed to create debt' }));
+		} finally {
+			setLoadingStates((prev) => ({ ...prev, debt: false }));
+		}
+	};
+
+	const handleEmailSend = async () => {
+		setLoadingStates((prev) => ({ ...prev, email: true }));
+		setMessages((prev) => ({ ...prev, email: '' }));
+
+		try {
+			console.log('Sending email to:', email);
+			console.log('Debtor ID:', debtorId);
+			console.log('Debt ID:', debtId);
+			const result = await sendTestEmailAction(debtorId, debtId, email);
+			console.log('Email result:', result);
+			setMessages((prev) => ({ ...prev, email: result.message }));
+		} catch {
+			setMessages((prev) => ({
+				...prev,
+				email: 'Failed to send email, check the console for more details.',
+			}));
+		} finally {
+			setLoadingStates((prev) => ({ ...prev, email: false }));
+		}
+	};
+
+	const resetFlow = () => {
+		setStep(1);
+		setDebtorId('');
+		setDebtId('');
+		setMessages({});
+		setLoadingStates({});
+	};
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Webhook Testing</CardTitle>
+				<CardTitle>Debt Collection Testing Flow</CardTitle>
+				<p className="text-muted-foreground text-sm">
+					Step {step} of 3:{' '}
+					{(() => {
+						if (step === 1) {
+							return 'Create Debtor';
+						}
+						if (step === 2) {
+							return 'Create Debt';
+						}
+						return 'Send Test Email';
+					})()}
+				</p>
 			</CardHeader>
-			<CardContent>
-				<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-					{tests.map((test) => (
-						<div className='space-y-3 rounded-lg border p-4' key={test.key}>
+			<CardContent className="space-y-6">
+				{step === 1 && (
+					<form action={handleDebtorCreate} className="space-y-4">
+						<div className="grid grid-cols-2 gap-4">
 							<div>
-								<h3 className="font-semibold text-sm">{test.title}</h3>
-								<p className="text-muted-foreground text-xs">
-									{test.description}
-								</p>
+								<Label htmlFor="firstName">First Name</Label>
+								<Input
+									defaultValue="John"
+									id="firstName"
+									name="firstName"
+									required
+								/>
 							</div>
-
-							<Button
-								className="w-full"
-								disabled={loadingStates[test.key]}
-								onClick={() => handleTest(test.key, test.testFunction)}
-								size="sm"
-							>
-								{loadingStates[test.key] ? 'Sending...' : test.buttonText}
-							</Button>
-
-							{messages[test.key] && (
-								<p
-									className={`text-xs ${messages[test.key].includes('success') ||
-											messages[test.key].includes('sent')
-											? 'text-green-600'
-											: 'text-red-600'
-										}`}
-								>
-									{messages[test.key]}
-								</p>
-							)}
+							<div>
+								<Label htmlFor="lastName">Last Name</Label>
+								<Input
+									defaultValue="Doe"
+									id="lastName"
+									name="lastName"
+									required
+								/>
+							</div>
 						</div>
-					))}
-				</div>
+						<div>
+							<Label htmlFor="email">Email</Label>
+							<Input
+								defaultValue="csheehan630@gmail.com"
+								id="email"
+								name="email"
+								onChange={(e) => setEmail(e.target.value)}
+								required
+								type="email"
+							/>
+						</div>
+						<div>
+							<Label htmlFor="phone">Phone (Optional)</Label>
+							<Input defaultValue="555-123-4567" id="phone" name="phone" />
+						</div>
+						<Button
+							className="w-full"
+							disabled={loadingStates.debtor}
+							type="submit"
+						>
+							{loadingStates.debtor ? 'Creating Debtor...' : 'Create Debtor'}
+						</Button>
+						{messages.debtor && (
+							<p
+								className={`text-xs ${messages.debtor.includes('success') ? 'text-green-600' : 'text-red-600'}`}
+							>
+								{messages.debtor}
+							</p>
+						)}
+					</form>
+				)}
+
+				{step === 2 && (
+					<form action={handleDebtCreate} className="space-y-4">
+						<div>
+							<Label htmlFor="originalCreditor">Original Creditor</Label>
+							<Input
+								defaultValue="ABC Collections"
+								id="originalCreditor"
+								name="originalCreditor"
+								required
+							/>
+						</div>
+						<div>
+							<Label htmlFor="totalOwed">Total Owed ($)</Label>
+							<Input
+								defaultValue="1250.75"
+								id="totalOwed"
+								name="totalOwed"
+								required
+								step="0.01"
+								type="number"
+							/>
+						</div>
+						<div className="flex gap-2">
+							<Button
+								className="flex-1"
+								onClick={resetFlow}
+								type="button"
+								variant="outline"
+							>
+								Start Over
+							</Button>
+							<Button
+								className="flex-1"
+								disabled={loadingStates.debt}
+								type="submit"
+							>
+								{loadingStates.debt ? 'Creating Debt...' : 'Create Debt'}
+							</Button>
+						</div>
+						{messages.debt && (
+							<p
+								className={`text-xs ${messages.debt.includes('success') ? 'text-green-600' : 'text-red-600'}`}
+							>
+								{messages.debt}
+							</p>
+						)}
+					</form>
+				)}
+
+				{step === 3 && (
+					<div className="space-y-4">
+						<div className="rounded-lg bg-muted p-4 text-sm">
+							<p>
+								<strong>Debtor Created:</strong> {debtorId}
+							</p>
+							<p>
+								<strong>Debt Created:</strong> {debtId}
+							</p>
+							<p>
+								<strong>Email Address:</strong> {email}
+							</p>
+						</div>
+						<div className="flex gap-2">
+							<Button
+								className="flex-1"
+								onClick={resetFlow}
+								type="button"
+								variant="outline"
+							>
+								Start Over
+							</Button>
+							<Button
+								className="flex-1"
+								disabled={loadingStates.email}
+								onClick={handleEmailSend}
+							>
+								{loadingStates.email ? 'Sending Email...' : 'Send Test Email'}
+							</Button>
+						</div>
+						{messages.email && (
+							<p
+								className={`text-xs ${messages.email.includes('success') ? 'text-green-600' : 'text-red-600'}`}
+							>
+								{messages.email}
+							</p>
+						)}
+					</div>
+				)}
 			</CardContent>
 		</Card>
 	);

@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
 	if (event.type === 'checkout.session.completed') {
 		const session = event.data.object as Stripe.Checkout.Session;
 		const accountId = session.metadata?.accountId;
-		console.log(accountId);
 		const amountPaid = session.amount_total;
 		if (accountId && amountPaid) {
 			await paidDebt({
