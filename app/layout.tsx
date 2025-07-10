@@ -1,18 +1,20 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Fira_Code, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 
-const geistSans = Geist({
-	variable: '--font-geist-sans',
+const spaceGrotesk = Space_Grotesk({
 	subsets: ['latin'],
+	display: 'swap',
+	variable: '--font-space-grotesk',
 });
 
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
+const firaCode = Fira_Code({
 	subsets: ['latin'],
+	display: 'swap',
+	variable: '--font-fira-code',
 });
 
 export const metadata: Metadata = {
@@ -26,9 +28,12 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html
+			lang="en"
+			suppressHydrationWarning
+		>
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+				className={`${spaceGrotesk.variable} ${firaCode.variable}`}
 			>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					<Toaster />
