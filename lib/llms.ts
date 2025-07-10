@@ -7,7 +7,6 @@ const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Default email response schema
 export const EmailResponseSchema = z.object({
 	subject: z.string(),
 	body: z.string(),
@@ -64,7 +63,6 @@ ${email.content || 'No content'}`,
 
 	return messages;
 }
-
 export async function generateResponseEmail(
 	emailHistory: Email[],
 	debt: Debt,
@@ -85,3 +83,4 @@ export async function generateResponseEmail(
 
 	return parsed;
 }
+

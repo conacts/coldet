@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 		if (accountId && amountPaid) {
 			await paidDebt({
 				id: accountId,
-				amountPaid: (amountPaid / 100).toFixed(2),
+				amountPaid: amountPaid / 100,
 			});
 		}
 	}

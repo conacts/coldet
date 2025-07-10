@@ -7,7 +7,6 @@ import {
 	Section,
 	Text,
 } from '@react-email/components';
-import { container, content, header, logo, main } from '@/emails/design-tokens';
 import type { EmailResponse } from '@/lib/llms';
 
 export const EmailResponseEmail = ({
@@ -29,17 +28,22 @@ export const EmailResponseEmail = ({
 				/>
 			</Head>
 			<Preview>{emailResponse.subject}</Preview>
-			<Body style={main}>
-
-				<Container style={container}>
+			<Body className="w-full bg-white font-sans">
+				<Container className='mx-auto mb-16 max-w-[600px] rounded-lg bg-white py-6 pb-16'>
 					{/* Header Section */}
-					<Section style={header}>
-						<Text style={logo}>Coldets</Text>
+					<Section className="text-center">
+						<Text className='font-bold text-4xl'>Coldets</Text>
 					</Section>
 
 					{/* Main Content */}
-					<Section style={content}>
-						<Text>{emailResponse.body}</Text>
+					<Section className="p-8">
+						<Text className='my-4 whitespace-pre-wrap text-base text-gray-900 leading-normal'>
+							{emailResponse.body}
+						</Text>
+
+						<Text className='my-4 mt-8 text-base text-gray-900 leading-normal'>
+							{emailResponse.signature}
+						</Text>
 					</Section>
 				</Container>
 			</Body>

@@ -1,10 +1,10 @@
 import { render } from '@react-email/render';
 import TestingButtons from '@/components/testing-buttons';
 import TestEmail from '@/emails/first-email';
-import { sendEmail, sendReplyEmail } from '@/lib/aws/ses';
+import { sendEmail } from '@/lib/aws/ses';
 import { createDebtor } from '@/lib/db/debtors';
 import { createDebt } from '@/lib/db/debts';
-import { createEmailThread, getThreadWithEmails } from '@/lib/db/email-threads';
+import { createEmailThread } from '@/lib/db/email-threads';
 import { createEmail } from '@/lib/db/emails';
 
 async function createDebtorAction(formData: FormData) {
@@ -100,33 +100,29 @@ async function sendTestEmailAction(
 			configurationSetName: 'email-tracking-config',
 		});
 
-		console.log('sendTestEmailAction: messageId', messageId);
-
 		const thread = await createEmailThread(
 			debtorId,
 			'Test Email with Tracking'
 		);
 
 
-		const outboundEmail = await createEmail({
+		await createEmail({
 			debtId,
 			threadId: thread.id,
+			fromEmailAddress: 'chris@coldets.com',
 			messageId,
 			direction: 'outbound',
 			subject: 'Test Email with Tracking',
 		});
 
-		console.log('sendTestEmailAction: outboundEmail', outboundEmail);
-
 		return {
 			success: true,
 			message: 'Email sent successfully!',
 		};
-	} catch (error) {
-		console.error('Error sending email:', error);
+	} catch {
 		return {
 			success: false,
-			message: 'Failed to send email, check the console for more details.',
+			message: 'Failed to send email.',
 		};
 	}
 }

@@ -7,6 +7,7 @@ import { generateUUID } from '@/lib/utils';
 export async function createEmail({
 	debtId,
 	threadId,
+	fromEmailAddress,
 	messageId = generateUUID(),
 	direction,
 	subject,
@@ -19,6 +20,7 @@ export async function createEmail({
 }: {
 	debtId: string;
 	threadId: string;
+	fromEmailAddress: string;
 	messageId: string;
 	direction: 'inbound' | 'outbound';
 	subject?: string | null;
@@ -35,6 +37,7 @@ export async function createEmail({
 			.values({
 				debtId,
 				threadId,
+				fromEmailAddress,
 				messageId,
 				direction,
 				subject,

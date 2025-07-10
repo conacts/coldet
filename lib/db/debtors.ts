@@ -45,6 +45,7 @@ export async function createDebtor(params: CreateDebtorParams): Promise<Debtor> 
 
 		return result[0];
 	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
 		console.error('Error creating debtor:', error);
 		throw error;
 	}

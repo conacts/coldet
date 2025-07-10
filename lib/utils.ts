@@ -14,6 +14,8 @@ export function generateUUID(): string {
  * @param emailHeader - Header value like "<010f0197ec379e7d-224bd427-ed93-4592-93b8-d6440b6ef347-000000@us-east-2.amazonses.com>"
  * @returns The messageId part: "010f0197ec379e7d-224bd427-ed93-4592-93b8-d6440b6ef347-000000"
  */
+
+// TODO: delete this shit
 export function extractMessageIdFromEmailHeader(emailHeader: string): string | null {
 	if (!emailHeader || typeof emailHeader !== 'string') {
 		return null;

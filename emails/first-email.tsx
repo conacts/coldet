@@ -6,32 +6,12 @@ import {
 	Heading,
 	Hr,
 	Html,
-	Link,
 	Preview,
 	Section,
 	Text,
 } from '@react-email/components';
-import {
-	borderRadius,
-	button,
-	buttonContainer,
-	container,
-	content,
-	emailColors,
-	h1,
-	header,
-	hr,
-	infoBox,
-	infoText,
-	infoTitle,
-	logo,
-	main,
-	spacing,
-	text,
-	typography,
-} from '@/emails/design-tokens';
 
-export const TestEmail = () => (
+export const FirstEmail = () => (
 	<Html lang="en">
 		<Head>
 			<div
@@ -41,34 +21,47 @@ export const TestEmail = () => (
 			/>
 		</Head>
 		<Preview>Test email to verify SES tracking is working</Preview>
-		<Body style={main}>
-			<Container style={container}>
+		<Body className="w-full bg-white font-sans">
+			<Container className='mx-auto mb-16 max-w-[600px] rounded-lg bg-white py-6 pb-16'>
 				{/* Header Section */}
-				<Section style={header}>
-					<Text style={logo}>Coldets</Text>
+				<Section className="text-center">
+					<Text className='font-bold text-4xl'>Coldets</Text>
 				</Section>
 
 				{/* Main Content */}
-				<Section style={content}>
-					<Heading style={h1}>Test Email</Heading>
+				<Section className="p-8">
+					<Heading className='m-0 mb-6 text-center font-bold text-3xl text-gray-900 leading-tight'>
+						Test Email
+					</Heading>
 
-					<Text style={text}>
+					<Text className='my-4 text-base text-gray-600 leading-normal'>
 						This is a test email to verify SES tracking is working perfectly.
 					</Text>
 
-					<Section style={buttonContainer}>
-						<Button href="https://coldets.com" style={button}>
+					<Section className="text-center">
+						<Button
+							className='inline-block cursor-pointer rounded-lg border-none bg-blue-600 px-6 py-2 text-center font-semibold text-base text-white no-underline'
+							href="https://coldets.com"
+						>
 							Click to Test Tracking
 						</Button>
 					</Section>
 
-					<Hr style={hr} />
+					<Hr className='my-6 border-gray-200' />
 
-					<Section style={infoBox}>
-						<Text style={infoTitle}>🎯 Testing Features:</Text>
-						<Text style={infoText}>• Email open tracking</Text>
-						<Text style={infoText}>• Link click tracking</Text>
-						<Text style={infoText}>• Beautiful responsive design</Text>
+					<Section className='my-6 rounded-lg border border-blue-100 bg-blue-50 p-6'>
+						<Text className='m-0 mb-2 font-semibold text-base text-blue-800'>
+							🎯 Testing Features:
+						</Text>
+						<Text className='my-1 text-blue-700 text-sm'>
+							• Email open tracking
+						</Text>
+						<Text className='my-1 text-blue-700 text-sm'>
+							• Link click tracking
+						</Text>
+						<Text className='my-1 text-blue-700 text-sm'>
+							• Beautiful responsive design
+						</Text>
 					</Section>
 				</Section>
 			</Container>
@@ -76,4 +69,4 @@ export const TestEmail = () => (
 	</Html>
 );
 
-export default TestEmail;
+export default FirstEmail;

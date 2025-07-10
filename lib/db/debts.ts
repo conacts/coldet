@@ -37,6 +37,7 @@ export async function createDebt(params: CreateDebtParams): Promise<Debt> {
 
 		return result[0];
 	} catch (error) {
+		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
 		console.error('Error creating debt:', error);
 		throw error;
 	}

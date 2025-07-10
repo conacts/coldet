@@ -75,6 +75,7 @@ export const emails = pgTable(
 			.notNull()
 			.references(() => debts.id, { onDelete: 'cascade' }),
 		threadId: uuid('thread_id').references(() => emailThreads.id, { onDelete: 'set null' }).notNull(),
+		fromEmailAddress: varchar('from_email_address', { length: 255 }).notNull(),
 		messageId: varchar('message_id', { length: 255 }).unique().notNull(),
 		direction: varchar('direction', {
 			enum: ['inbound', 'outbound'],
