@@ -1,256 +1,266 @@
 # Debtor Journey & Workflows
 
-## Complete Debtor Lifecycle
+## Simplified Debtor Lifecycle
 
-### 1. Aggressive Contact Sequence
+The current system focuses on email tracking, payment processing, and manual workflow management rather than automated AI responses.
 
-**Day 1: Email Introduction**
+### 1. Email Communication Flow
+
+**Inbound Email Processing**
+
 ```
-Trigger: New debt account imported
-Action: AI generates personalized email
-Content: 
-- Debt validation notice (FDCPA compliant)
-- Payment options with link to /pay/:token
-- Dispute process information
-- Contact preferences form
+Trigger: Debtor sends email reply
+Action: Webhook receives and processes email
+Process:
+1. AWS SES receives email → webhook to /api/webhooks/email/received
+2. System parses email and identifies debtor by email address
+3. Email stored in database with messageId and threading info
+4. Email content available for manual review and response
+5. Engagement metrics updated (email received, response time)
 
 Tracking:
-- Email sent, delivered, opened, clicked
-- Contact count incremented
+- Email received timestamp
+- Sender identification
+- Basic threading via In-Reply-To headers
+- Content stored for future reference
 ```
 
-**Daily Email Follow-up (Business Days)**
-```
-Trigger: No payment after previous contact
-Schedule: Daily at 9 AM local time, Monday-Friday
-Action: AI sends personalized follow-up email
-Content:
-- Varied messaging based on contact count
-- Payment link with settlement options
-- Phone number for questions
+**Outbound Email Sending**
 
-Compliance Checks:
-- Max 7 contacts per week (FDCPA limit)
-- Skip weekends and holidays
-- Honor cease and desist requests
 ```
-
-**Daily Phone Contact (Business Days)**
-```
-Trigger: After 3 email attempts without response
-Schedule: Daily at 2 PM local time, Monday-Friday
-Action: AI-powered outbound call
+Trigger: Manual initiation or system event (payment, receipt)
+Action: Send email via AWS SES
 Process:
-1. Check TCPA consent status
-2. Verify not on Do Not Call list
-3. Verify max 7 calls per week limit
-4. Call with compliance script
-5. Log call outcome and schedule next
+1. Generate email using Tailwind templates
+2. Send via AWS SES SendEmail API
+3. Log outbound email in database
+4. Track delivery status and engagement
 
-Compliance Checks:
-- Only call 8 AM - 9 PM debtor's local time
-- Honor phone consent preferences
-- Stop calling if requested
+Email Types:
+- Initial contact emails
+- Payment confirmation receipts
+- Payment reminder emails
+- Settlement offer emails
 ```
 
 ### 2. Debtor Response Scenarios
 
 **Scenario A: Email Reply Received**
+
 ```
-Webhook: /webhook/email receives debtor reply
+Webhook: /api/webhooks/email/received processes debtor reply
 Process:
-1. Parse email content with AI
-2. Identify debtor by email address
-3. Categorize response (payment plan request, dispute, question)
-4. Generate appropriate AI response
-5. Update engagement score positively
+1. Parse and store email content in database
+2. Identify debtor by email address matching
+3. Update email thread with new message
+4. Flag for manual review and response
+5. Track engagement metrics
 
-Response Types:
-- Payment plan request → AI offers plan options
-- Dispute claim → Sends dispute forms and pauses collection
-- Questions → AI provides information and payment options
-- Hardship → AI offers reduced payment options
+Manual Review Process:
+- Staff reviews email content and context
+- Determine appropriate response (payment plan, dispute, information)
+- Send personalized response via email system
+- Update debtor status and notes
 ```
 
-**Scenario B: Inbound Phone Call**
-```
-Webhook: /webhook/twilio receives inbound call
-Process:
-1. IVR prompts for account identification
-2. System looks up debtor by phone or account info
-3. AI voice agent handles conversation
-4. Route to human if needed for complex issues
-5. Log complete interaction
+**Scenario B: Payment Page Visit**
 
-IVR Flow:
-"Thank you for calling. For your security, please enter your account number or date of birth..."
-→ System identifies debtor
-→ "I see you have an account with a balance of $X. How can I help you today?"
-```
-
-**Scenario C: Payment Page Visit**
 ```
 Event: Debtor visits /pay/:token
 Process:
 1. Log page visit with timestamp
-2. Track time on page and interactions
-3. Record any form fields completed
-4. Update engagement score based on behavior
-5. Send follow-up email if they don't complete payment
+2. Track payment page engagement
+3. Record payment method selections
+4. Store completion or abandonment data
+5. Use data for follow-up planning
 
 Page Analytics:
 - Time spent on page
 - Payment method selected
-- Form abandonment points
+- Form completion vs abandonment
 - Mobile vs desktop usage
+- Return visits
 ```
 
 ### 3. Payment Processing Workflows
 
 **Successful Payment Flow**
+
 ```
 1. Debtor completes Stripe checkout
-2. Webhook: /webhook/stripe payment_intent.succeeded
-3. System updates debt balance
-4. Sends automatic receipt email
-5. Updates debtor status to "paid" or "partial payment"
-6. Schedules thank you follow-up
-7. Removes from active collection sequences
+2. Webhook: /api/webhooks/stripe payment_intent.succeeded
+3. System updates debt balance and status
+4. Automatic receipt email sent via template
+5. Update debtor status to "paid" or "partial payment"
+6. Remove from active collection sequences (manual)
+7. Log complete payment transaction
 ```
 
 **Failed Payment Flow**
+
 ```
 1. Payment attempt fails (declined card, insufficient funds)
-2. Webhook: /webhook/stripe payment_intent.payment_failed
-3. AI sends helpful email with alternative payment options
-4. Suggests different payment method or payment plan
-5. Schedules follow-up call in 3 days
-6. Updates engagement score (negative for failed payment)
+2. Webhook: /api/webhooks/stripe payment_intent.payment_failed
+3. System logs failed payment attempt
+4. Flag for manual follow-up with alternative options
+5. Staff can send targeted emails about other payment methods
+6. Schedule follow-up contact as needed
 ```
 
 **Payment Plan Setup**
+
 ```
-1. Debtor selects payment plan on /pay/:token
-2. Stripe subscription created for recurring payments
+1. Debtor requests payment plan (email or phone)
+2. Staff manually sets up Stripe subscription
 3. First payment processed immediately
-4. Automatic reminders before each payment due
-5. System tracks plan compliance
-6. Collections resume if plan defaults
+4. System tracks payment plan compliance
+5. Manual reminders sent before each due date
+6. Collections resume if plan defaults (manual process)
 ```
 
-### 4. Dynamic Page Personalization
+### 4. Dynamic Page Content
 
-**Landing Page (/debtor/:token) Content Rules**
+**Landing Page (/debtor/:token) Features**
+
 ```
-High Engagement Score (80-100):
-- Prominent "Pay Now" button
-- Full payment options emphasized
-- "Quick settlement" discount offers
-
-Medium Engagement Score (40-79):
-- Payment plan options highlighted
-- "Speak with us" contact forms
-- Educational content about debt resolution
-
-Low Engagement Score (0-39):
-- Larger fonts, simpler language
-- Basic contact information
-- Clear dispute process explanation
+Standard Content:
+- Debtor name and account information
+- Current balance and payment options
+- Contact information for questions
+- Payment history if applicable
+- Mobile-optimized responsive design
+- Dispute process information
 ```
 
-**Payment Page (/pay/:token) Optimization**
-```
-Mobile Users:
-- Apple Pay/Google Pay prominently featured
-- Single-page checkout process
-- Large touch-friendly buttons
+**Payment Page (/pay/:token) Features**
 
-Desktop Users:
-- Detailed payment breakdown
-- Multiple payment method options
+```
+Payment Options:
+- Full payment with potential discount
+- Partial payment options
+- Payment plan inquiry contact
+- Multiple payment methods (card, ACH, digital wallets)
 - Trust badges and security information
-
-Previous Visitors:
-- "Welcome back" messaging
-- Saved payment preferences
-- Progress indicators if previous abandonment
+- Mobile-optimized checkout process
 ```
 
-### 5. Compliance Automation
+### 5. Basic Compliance Tracking
 
-**FDCPA Compliance Checks**
+**FDCPA Compliance Requirements**
+
 ```
-Before each communication:
-1. Check contact frequency (max 7 calls/week)
-2. Verify contact time restrictions (8 AM - 9 PM local time)
-3. Confirm not on cease and desist list
+Communication Rules:
+1. Track all communication attempts and responses
+2. Maintain records of all debtor interactions
+3. Honor cease and desist requests immediately
 4. Include required disclosures in all communications
-5. Log interaction for audit trail
+5. Log all interactions for audit trail
 ```
 
-**TCPA Compliance for Calls**
+**Manual Compliance Checks**
+
 ```
-Before auto-dialing cell phones:
-1. Check consent database for written permission
-2. If no consent: manual dial only (1 call/day max)
-3. If consent exists: proceed with AI calling
-4. Always include opt-out option
-5. Honor opt-out requests immediately
+Before communications:
+1. Review contact frequency (max 7 attempts/week)
+2. Verify appropriate contact times (8 AM - 9 PM local time)
+3. Check cease and desist status
+4. Ensure proper disclosures included
+5. Document interaction details
 ```
 
-### 6. Engagement Scoring Algorithm
+### 6. Engagement Tracking
 
-**Real-time Score Updates**
+**Basic Engagement Metrics**
+
 ```
 Email Actions:
-- Email opened: +5 points
-- Link clicked: +10 points
-- Replied to email: +15 points
-- Unsubscribed: -20 points
+- Email delivered and opened
+- Links clicked (payment page visits)
+- Email replies received
+- Unsubscribe requests
 
-Phone Actions:
-- Answered call: +20 points
-- Called us back: +25 points
-- Requested not to call: -15 points
+Payment Actions:
+- Payment page visits
+- Payment form starts
+- Successful payments
+- Failed payment attempts
+- Payment plan requests
 
-Website Actions:
-- Visited payment page: +15 points
-- Started payment form: +20 points
-- Completed payment: +50 points
-- Multiple visits: +5 per visit
-
-Payment Behavior:
-- Made payment: +50 points
-- Set up payment plan: +30 points
-- Failed payment: -10 points
-- Requested hardship: -5 points
+Communication Preferences:
+- Preferred contact methods
+- Response patterns
+- Best contact times
+- Historical engagement levels
 ```
 
-**Score-Based Automation**
+**Manual Scoring Considerations**
+
 ```
-Score 80-100: Daily contact allowed, aggressive payment push
-Score 60-79: Every other day contact, payment plan emphasis
-Score 40-59: Twice weekly contact, education focus
-Score 20-39: Weekly contact, basic information
-Score 0-19: Minimal contact, dispute resolution focus
+High Engagement Indicators:
+- Quick email responses
+- Multiple payment page visits
+- Completed payments
+- Payment plan compliance
+
+Low Engagement Indicators:
+- No email responses
+- No payment page visits
+- Failed payments without follow-up
+- Requests to stop contact
+
+Medium Engagement:
+- Occasional responses
+- Payment page visits without completion
+- Questions about payment options
+- Partial payments
 ```
 
-### 7. Multi-Channel Coordination
+### 7. Streamlined Communication Management
 
-**Unified Messaging Across Channels**
-```
-- All channels (email, phone, SMS) share same conversation context
-- AI maintains consistent tone and information
-- No contradictory messages across channels
-- Debtor preferences respected (email-only, phone-only, etc.)
-```
+**Email-Focused Communication**
 
-**Cross-Channel Analytics**
 ```
-- Track which channel generates best response rates
-- Optimize timing based on debtor behavior patterns
-- Personalize channel selection per debtor
-- Measure conversion rates by communication method
+- Primary communication via email with manual responses
+- All emails tracked in database with threading
+- Payment confirmations sent automatically
+- Manual follow-up scheduling based on debtor responses
+- Consistent branding via Tailwind email templates
 ```
 
-This system ensures every debtor interaction is tracked, optimized, and compliant while maximizing payment conversion through personalized experiences.
+**Payment-Focused Experience**
+
+```
+- Simple, mobile-optimized payment pages
+- Multiple payment method options
+- Clear payment terms and settlement offers
+- Automatic receipt generation
+- Payment plan options with manual setup
+```
+
+### 8. Current System Capabilities
+
+**Automated Features:**
+
+- Email webhook processing and storage
+- Payment processing via Stripe
+- Receipt generation and delivery
+- Basic email threading detection
+- Payment page visit tracking
+
+**Manual Features:**
+
+- Email response generation and sending
+- Payment plan setup and management
+- Follow-up scheduling and communication
+- Compliance monitoring and documentation
+- Engagement analysis and strategy adjustment
+
+**Future Enhancements:**
+
+- SMS integration for multi-channel communication
+- Enhanced analytics and reporting
+- Automated payment reminder sequences
+- Advanced engagement scoring
+- Compliance monitoring dashboard
+
+This simplified system maintains core functionality while allowing for manual control and oversight of all debtor communications, ensuring compliance and personalized service.

@@ -2,226 +2,331 @@
 
 ## Schema Overview
 
+The COLDETS debt collection platform uses PostgreSQL with Drizzle ORM for type-safe database operations. The schema supports email tracking, payment processing, and basic workflow management.
+
 ## Entity Relationships
+
+- One debtor → Many debts
+- One debt → Many emails/calls/SMS/payments
+- One email thread → Many emails
+- All communication tables linked via debt_id for complete tracking
 
 ## Core Tables
 
 ### Debtors
 
-Primary debtor contact information
+Primary debtor contact information and consent tracking
 
-```sql
-CREATE TABLE debtors (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) UNIQUE,
-    phone VARCHAR(20),
-    address_line1 VARCHAR(255),
-    address_line2 VARCHAR(255),
-    city VARCHAR(100),
-    state VARCHAR(2),
-    zip_code VARCHAR(10),
+```typescript
+export const debtors = pgTable("debtors", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    firstName: varchar("first_name", {length: 100}).notNull(),
+    lastName: varchar("last_name", {length: 100}).notNull(),
+    email: varchar("email", {length: 255}).unique(),
+    phone: varchar("phone", {length: 20}),
+    addressLine1: varchar("address_line1", {length: 255}),
+    addressLine2: varchar("address_line2", {length: 255}),
+    city: varchar("city", {length: 100}),
+    state: varchar("state", {length: 2}),
+    zipCode: varchar("zip_code", {length: 10}),
 
-    -- Consent and compliance
-    phone_consent BOOLEAN DEFAULT false,
-    email_consent BOOLEAN DEFAULT true,
-    dnc_registered BOOLEAN DEFAULT false,
+    // Consent and compliance
+    phoneConsent: boolean("phone_consent").notNull().default(false),
+    emailConsent: boolean("email_consent").notNull().default(true),
+    dncRegistered: boolean("dnc_registered").notNull().default(false),
+    currentlyCollecting: boolean("currently_collecting")
+        .notNull()
+        .default(false),
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
 ```
 
 ### Debts
 
-Individual debt accounts with tracking
+Individual debt accounts with tracking and payment status
 
-```sql
-CREATE TABLE debts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    debtor_id UUID NOT NULL REFERENCES debtors(id),
+```typescript
+export const debts = pgTable("debts", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtorId: uuid("debtor_id")
+        .notNull()
+        .references(() => debtors.id, {onDelete: "cascade"}),
 
-    -- Debt details
-    original_creditor VARCHAR(200) NOT NULL,
-    total_owed DECIMAL(10,2) NOT NULL DEFAULT 0,
-    amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'active', -- active, resolved, dispute, etc.
+    // Debt details
+    originalCreditor: varchar("original_creditor", {length: 200}).notNull(),
+    totalOwed: decimal("total_owed", {precision: 10, scale: 2})
+        .notNull()
+        .default("0"),
+    amountPaid: decimal("amount_paid", {precision: 10, scale: 2})
+        .notNull()
+        .default("0"),
+    status: varchar("status", {length: 20}).notNull().default("active"),
 
-    -- Tracking
-    total_contacts INTEGER DEFAULT 0,
+    // Dates
+    debtDate: timestamp("debt_date"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+```
 
-    -- Dates
-    debt_date DATE,
-    imported_at TIMESTAMP DEFAULT NOW(),
+### Email Threads
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+Groups related email conversations by debtor and subject
+
+```typescript
+export const emailThreads = pgTable("email_threads", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtorId: uuid("debtor_id")
+        .notNull()
+        .references(() => debtors.id, {onDelete: "cascade"}),
+    subject: varchar("subject", {length: 500}),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
 ```
 
 ### Emails
 
-Track email communications
+Track all email communications with threading support
 
-```sql
-CREATE TABLE emails (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    debt_id UUID NOT NULL REFERENCES debts(id),
+```typescript
+export const emails = pgTable("emails", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtId: uuid("debt_id")
+        .notNull()
+        .references(() => debts.id, {onDelete: "cascade"}),
+    threadId: uuid("thread_id")
+        .references(() => emailThreads.id, {onDelete: "set null"})
+        .notNull(),
 
-    direction VARCHAR(10) NOT NULL, -- 'inbound', 'outbound'
-    subject VARCHAR(500),
-    content TEXT,
+    // Email identification
+    fromEmailAddress: varchar("from_email_address", {length: 255}).notNull(),
+    messageId: varchar("message_id", {length: 255}).unique().notNull(),
+    replyTo: varchar("reply_to", {length: 255}),
 
-    -- Tracking
-    email_opened BOOLEAN DEFAULT false,
-    email_clicked BOOLEAN DEFAULT false,
+    // Content
+    direction: varchar("direction", {enum: ["inbound", "outbound"]}).notNull(),
+    subject: varchar("subject", {length: 500}),
+    content: text("content"),
 
-    -- Metadata
-    ai_generated BOOLEAN DEFAULT false,
-    compliance_checked BOOLEAN DEFAULT true,
+    // Tracking and engagement
+    emailOpened: boolean("email_opened").notNull().default(false),
+    emailClicked: boolean("email_clicked").notNull().default(false),
+    emailBounced: boolean("email_bounced").notNull().default(false),
+    emailComplained: boolean("email_complained").notNull().default(false),
 
-    timestamp TIMESTAMP DEFAULT NOW(),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+    // Metadata
+    aiGenerated: boolean("ai_generated").notNull().default(false),
+    complianceChecked: boolean("compliance_checked").notNull().default(true),
+
+    timestamp: timestamp("timestamp").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
 ```
 
 ### Calls
 
-Track phone call communications
+Track phone call communications (planned feature)
 
-```sql
-CREATE TABLE calls (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    debt_id UUID NOT NULL REFERENCES debts(id),
+```typescript
+export const calls = pgTable("calls", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtId: uuid("debt_id")
+        .notNull()
+        .references(() => debts.id, {onDelete: "cascade"}),
 
-    direction VARCHAR(10) NOT NULL, -- 'inbound', 'outbound'
-    call_duration INTEGER, -- seconds
-    call_outcome VARCHAR(50), -- 'answered', 'voicemail', 'busy', 'no_answer'
+    direction: varchar("direction", {enum: ["inbound", "outbound"]}).notNull(),
+    callDuration: integer("call_duration"), // seconds
+    callOutcome: varchar("call_outcome", {length: 50}),
 
-    -- Call content
-    transcript TEXT,
-    recording_url VARCHAR(500),
+    // Call content
+    transcript: text("transcript"),
+    recordingUrl: varchar("recording_url", {length: 500}),
 
-    -- Metadata
-    ai_generated BOOLEAN DEFAULT false,
-    compliance_checked BOOLEAN DEFAULT true,
+    // Metadata
+    aiGenerated: boolean("ai_generated").notNull().default(false),
+    complianceChecked: boolean("compliance_checked").notNull().default(true),
 
-    timestamp TIMESTAMP DEFAULT NOW(),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+    timestamp: timestamp("timestamp").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
 ```
 
 ### SMS
 
-Track SMS communications
+Track SMS communications (planned feature)
 
-```sql
-CREATE TABLE sms (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    debt_id UUID NOT NULL REFERENCES debts(id),
+```typescript
+export const sms = pgTable("sms", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtId: uuid("debt_id")
+        .notNull()
+        .references(() => debts.id, {onDelete: "cascade"}),
 
-    direction VARCHAR(10) NOT NULL, -- 'inbound', 'outbound'
-    content TEXT,
+    direction: varchar("direction", {enum: ["inbound", "outbound"]}).notNull(),
+    content: text("content"),
 
-    -- Metadata
-    ai_generated BOOLEAN DEFAULT false,
-    compliance_checked BOOLEAN DEFAULT true,
+    // Metadata
+    aiGenerated: boolean("ai_generated").notNull().default(false),
+    complianceChecked: boolean("compliance_checked").notNull().default(true),
 
-    timestamp TIMESTAMP DEFAULT NOW(),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+    timestamp: timestamp("timestamp").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+});
 ```
 
 ### Payments
 
-Track payment attempts and successes
+Track payment attempts and successes with Stripe integration
 
-```sql
-CREATE TABLE payments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    debt_id UUID NOT NULL REFERENCES debts(id),
+```typescript
+export const payments = pgTable("payments", {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    debtId: uuid("debt_id")
+        .notNull()
+        .references(() => debts.id, {onDelete: "cascade"}),
 
-    amount DECIMAL(10,2) NOT NULL,
-    payment_type VARCHAR(20), -- 'full', 'partial', 'plan'
+    amount: decimal("amount", {precision: 10, scale: 2}).notNull(),
+    paymentType: varchar("payment_type", {length: 20}),
 
-    -- Stripe integration
-    stripe_payment_intent_id VARCHAR(100),
-    stripe_session_id VARCHAR(100),
-    payment_method VARCHAR(50), -- 'card', 'bank', 'apple_pay', etc.
+    // Stripe integration
+    stripePaymentIntentId: varchar("stripe_payment_intent_id", {length: 100}),
+    stripeSessionId: varchar("stripe_session_id", {length: 100}),
+    paymentMethod: varchar("payment_method", {length: 50}),
 
-    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'completed', 'failed', 'refunded'
+    status: varchar("status", {length: 20}).notNull().default("pending"),
 
-    created_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP
-);
+    createdAt: timestamp("created_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+});
 ```
 
 ## Indexes for Performance
 
-```sql
--- Core lookup indexes
-CREATE INDEX idx_debtors_email ON debtors(email);
-CREATE INDEX idx_debtors_phone ON debtors(phone);
+```typescript
+// Email performance indexes
+debtIdx: index('idx_emails_debt').on(table.debtId),
+timestampIdx: index('idx_emails_timestamp').on(table.timestamp),
+threadTimestampIdx: index('idx_emails_thread_timestamp').on(table.threadId, table.timestamp),
+messageIdIdx: uniqueIndex('idx_emails_message_id').on(table.messageId),
 
--- Debt tracking
-CREATE INDEX idx_debts_debtor ON debts(debtor_id);
-CREATE INDEX idx_debts_status ON debts(status);
+// Email thread indexes
+debtorIdx: index('idx_email_threads_debtor').on(table.debtorId),
 
--- Communication tracking
-CREATE INDEX idx_emails_debt ON emails(debt_id);
-CREATE INDEX idx_emails_timestamp ON emails(timestamp);
-CREATE INDEX idx_calls_debt ON calls(debt_id);
-CREATE INDEX idx_calls_timestamp ON calls(timestamp);
-CREATE INDEX idx_sms_debt ON sms(debt_id);
-CREATE INDEX idx_sms_timestamp ON sms(timestamp);
+// Debt tracking indexes
+debtorStatusIdx: uniqueIndex('idx_debts_debtor_status').on(table.debtorId, table.status),
 
--- Payment tracking
-CREATE INDEX idx_payments_debt ON payments(debt_id);
-CREATE INDEX idx_payments_status ON payments(status);
-CREATE INDEX idx_payments_stripe ON payments(stripe_payment_intent_id);
+// Payment tracking indexes
+debtIdx: uniqueIndex('idx_payments_debt').on(table.debtId),
+statusIdx: uniqueIndex('idx_payments_status').on(table.status),
+stripeIdx: uniqueIndex('idx_payments_stripe').on(table.stripePaymentIntentId),
 ```
 
 ## Key Features
 
-### 1. Debt-Centric Tracking
+### 1. Email Threading System
 
--   Each debt gets a unique token for personalized URLs
--   All interactions tied to specific debt record
--   Debtor contact info separated from debt details
+- **Email Threads**: Group related conversations by debtor and subject
+- **Message ID Tracking**: Unique AWS SES message IDs for each email
+- **Threading Detection**: Uses In-Reply-To headers for conversation continuity
+- **Direction Tracking**: Clearly distinguishes inbound vs outbound emails
 
 ### 2. Communication History
 
--   Separate tables for emails, calls, and SMS
--   Complete audit trail of all contacts
--   AI vs human generated content tracking
--   Compliance verification for each interaction
+- **Complete Audit Trail**: All interactions stored with timestamps
+- **Engagement Tracking**: Email opens, clicks, bounces, and complaints
+- **Compliance Flagging**: AI-generated content and compliance verification
+- **Multi-Channel Support**: Email, calls, and SMS (planned)
 
-### 3. Payment Tracking
+### 3. Payment Integration
 
--   Stripe integration with full payment lifecycle
--   Multiple payment option support
--   Payment status tracking
+- **Stripe Integration**: Complete payment lifecycle tracking
+- **Multiple Payment Methods**: Card, ACH, digital wallets
+- **Payment Status Tracking**: Pending, completed, failed, refunded
+- **Session Management**: Stripe checkout session tracking
 
 ## Data Relationships
 
--   One debtor → Many debts
--   One debt → Many emails/calls/SMS
--   One debt → Many payments
--   All tables linked via debt_id for complete tracking
+### Primary Relationships
 
-## Indexes
+- `debtors` (1) → `debts` (many)
+- `debts` (1) → `emails` (many)
+- `debts` (1) → `payments` (many)
+- `debtors` (1) → `email_threads` (many)
+- `email_threads` (1) → `emails` (many)
 
-## Constraints
+### Cascade Behavior
 
-## Data Types
+- Deleting a debtor cascades to all related records
+- Deleting a debt cascades to all communications and payments
+- Email thread deletion sets thread_id to null in emails
 
-## Migration Strategy
+## Type Safety
 
-## Backup Procedures
+The schema uses Drizzle ORM's `InferSelectModel` for complete TypeScript type safety:
 
-## Performance Optimization
+```typescript
+export type Debtor = InferSelectModel<typeof debtors>;
+export type Debt = InferSelectModel<typeof debts>;
+export type Email = InferSelectModel<typeof emails>;
+export type EmailThread = InferSelectModel<typeof emailThreads>;
+export type Payment = InferSelectModel<typeof payments>;
+```
 
-## Data Retention Policies
+## Database Operations
 
-## Archive Strategy
+### Email Processing
+
+```typescript
+// Store inbound email with threading
+await insertEmail({
+    debtId: debt.id,
+    threadId: thread.id,
+    fromEmailAddress: sender,
+    messageId: sesMessageId,
+    direction: "inbound",
+    subject: emailSubject,
+    content: emailContent,
+});
+```
+
+### Payment Tracking
+
+```typescript
+// Track Stripe payment
+await insertPayment({
+    debtId: debt.id,
+    amount: paymentAmount,
+    stripePaymentIntentId: intent.id,
+    status: "completed",
+    completedAt: new Date(),
+});
+```
+
+## Current Implementation Status
+
+### ✅ **Active Tables**
+
+- **debtors**: Complete contact and consent management
+- **debts**: Core debt tracking with payment status
+- **emails**: Full email processing with threading
+- **email_threads**: Basic conversation grouping
+- **payments**: Stripe integration with transaction tracking
+
+### 🔄 **Planned Tables**
+
+- **calls**: Phone communication tracking
+- **sms**: SMS communication tracking
+
+### 🎯 **Future Enhancements**
+
+- Enhanced engagement scoring calculations
+- Additional compliance tracking fields
+- Advanced analytics and reporting tables
+- Integration with external service tracking
+
+---
+
+**Schema Status**: Operational with core email and payment functionality. All tables use UUID primary keys and include proper indexing for performance.
