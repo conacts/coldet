@@ -14,7 +14,7 @@ let client: PGlite;
 
 vi.mock('@/lib/db/client', () => ({
   db: new Proxy({}, {
-    get: (target, prop) => {
+    get: (_target, prop) => {
       return testDb[prop as keyof typeof testDb];
     }
   })

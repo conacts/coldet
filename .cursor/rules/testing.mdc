@@ -1,0 +1,133 @@
+---
+description: Testing Philosophy and Strategic Guidelines for COLDETS
+alwaysApply: false
+---
+# Testing Philosophy & Strategic Guidelines
+
+## Core Testing Principle
+**"Test what's hard to debug in production, monitor what's easy to detect"**
+
+This principle guides all testing decisions. Focus testing effort on complex business logic and integration points while relying on production monitoring for systems with immediate failure visibility.
+
+## Testing Strategy Framework
+
+### When to Write E2E Tests
+- **Complex business workflows** that span multiple systems
+- **Integration points** between different services/APIs
+- **Data flow transformations** that are hard to debug
+- **Email processing and threading logic** (high complexity, hard to debug)
+- **AI integration workflows** (non-deterministic, complex state management)
+
+### When to Write Unit Tests
+- **Database CRUD operations** (data integrity critical)
+- **Business logic functions** (rules, calculations, validations)
+- **Utility functions** (pure functions, transformations)
+- **API route handlers** (request/response logic)
+- **Authentication and authorization logic**
+
+### When to Rely on Production Monitoring
+- **Payment processing failures** (immediately visible in revenue)
+- **Third-party service outages** (external status pages available)
+- **Simple API integrations** with obvious failure modes
+- **Infrastructure issues** (server monitoring, uptime checks)
+
+## Strategic Deferral Guidelines
+
+### Payment Processing Tests
+- **Decision**: Defer comprehensive E2E payment tests
+- **Rationale**: Payment failures are immediately detectable through revenue monitoring
+- **Coverage**: Unit tests for Stripe integration provide sufficient validation
+- **Monitoring**: Real-time revenue tracking more effective than complex test scenarios
+
+### Third-Party Integration Tests
+- **Prefer**: Mock integrations for unit tests
+- **Avoid**: Complex E2E tests that depend on external service availability
+- **Exception**: Critical business flows that transform data from third-party sources
+
+## Test Implementation Standards
+
+### Test Organization
+- **Unit tests**: `/tests/lib/` - organized by functionality
+- **E2E tests**: `/tests/e2e/` - organized by user workflows
+- **Test scenarios**: Use descriptive names that explain business context
+
+### Database Testing
+- Use separate test database with proper cleanup
+- Test data integrity and foreign key relationships
+- Validate edge cases (special characters, Unicode, large datasets)
+- Test concurrent operations where applicable
+
+### Email Testing
+- Mock AWS SES for unit tests
+- Test email threading logic thoroughly (complex business rules)
+- Validate email parsing and response generation
+- Test error handling for malformed emails
+
+### AI Integration Testing
+- Mock LLM responses for predictable testing
+- Test prompt engineering and response parsing
+- Validate error handling for AI service failures
+- Test usage tracking and rate limiting
+
+## Performance Standards
+- **Test execution**: Aim for <60 seconds total runtime
+- **Individual tests**: Keep under 500ms each
+- **Parallel execution**: Use for independent tests
+- **Database cleanup**: Efficient teardown to maintain speed
+
+## Production Readiness Checklist
+- [ ] All unit tests passing (255/255 target)
+- [ ] Critical E2E workflows tested (Initial Contact, Email Replies)
+- [ ] Database integrity validated
+- [ ] Error handling tested for all critical paths
+- [ ] Production monitoring configured for deferred test areas
+- [ ] Build process validates without errors
+
+## Testing Tools & Configuration
+- **Framework**: Vitest with Playwright for browser tests
+- **Database**: Separate test database with migrations
+- **Mocking**: Prefer simple mocks over complex test doubles
+- **Assertions**: Use descriptive error messages
+- **Coverage**: Focus on critical business logic, not coverage metrics
+
+## Continuous Improvement
+- **Regular review**: Evaluate which production issues could have been caught by tests
+- **Strategic adjustment**: Move tests between unit/E2E/monitoring based on real-world feedback
+- **Performance optimization**: Keep test suite fast to encourage frequent execution
+- **Documentation**: Update this file when testing strategies evolve
+
+## Example Test Patterns
+
+### Good E2E Test
+```typescript
+// Tests complete business workflow with multiple integration points
+describe("Initial Contact Flow E2E", () => {
+  it("should execute complete 3-step workflow", async () => {
+    // 1. Create debtor
+    // 2. Create debt
+    // 3. Send initial email
+    // Validates: Database relationships, email generation, SES integration
+  });
+});
+```
+
+### Good Unit Test
+```typescript
+// Tests specific business logic with clear assertions
+describe("Email Threading Logic", () => {
+  it("should link reply to existing thread using In-Reply-To header", () => {
+    // Validates: Complex email parsing rules
+  });
+});
+```
+
+### Strategic Deferral Example
+```typescript
+// Payment processing - deferred to production monitoring
+// Rationale: Stripe failures immediately visible in revenue dashboard
+// Coverage: Unit tests validate integration, production monitors business impact
+```
+
+This testing philosophy ensures efficient use of development time while maintaining high confidence in production deployments.
+alwaysApply: false
+---

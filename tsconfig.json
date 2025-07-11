@@ -21,6 +21,11 @@
     "paths": {
       "@/*": ["./*"]
     },
+    "types": [
+      "vitest/globals",
+      "@vitest/browser/matchers",
+      "@vitest/browser/providers/playwright"
+    ],
     "strictNullChecks": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
