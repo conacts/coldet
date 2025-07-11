@@ -16,6 +16,21 @@ import {
 	varchar
 } from 'drizzle-orm/pg-core';
 
+// Organizations table - Companies using the platform
+export const organizations = pgTable('organizations', {
+	id: uuid('id').primaryKey().notNull().defaultRandom(),
+	name: varchar('name', { length: 200 }).notNull(),
+	description: text('description'),
+	settings: jsonb('settings'),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+	activeIdx: index('idx_organizations_active').on(table.active),
+}));
+export type Organization = InferSelectModel<typeof organizations>;
+export type PartialOrganization = Partial<Organization>;
+
 // Users table - Platform users who collect debts
 export const users = pgTable('users', {
 	id: uuid('id').primaryKey().notNull().defaultRandom(),
@@ -37,9 +52,92 @@ export const users = pgTable('users', {
 export type User = InferSelectModel<typeof users>;
 export type PartialUser = Partial<User>;
 
+// User Organization Memberships table - Links users to organizations with roles
+export const userOrganizationMemberships = pgTable('user_organization_memberships', {
+	id: uuid('id').primaryKey().notNull().defaultRandom(),
+	userId: uuid('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	organizationId: uuid('organization_id')
+		.notNull()
+		.references(() => organizations.id, { onDelete: 'cascade' }),
+	role: varchar('role', { length: 50 }).notNull().default('collector'), // admin, manager, collector, viewer
+	active: boolean('active').notNull().default(true),
+	joinedAt: timestamp('joined_at').defaultNow(),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+	userIdx: index('idx_memberships_user').on(table.userId),
+	organizationIdx: index('idx_memberships_organization').on(table.organizationId),
+	userOrgIdx: uniqueIndex('idx_memberships_user_org').on(table.userId, table.organizationId),
+	activeIdx: index('idx_memberships_active').on(table.active),
+}));
+export type UserOrganizationMembership = InferSelectModel<typeof userOrganizationMemberships>;
+export type PartialUserOrganizationMembership = Partial<UserOrganizationMembership>;
+
+// Organization Invitations table - Magic URL invitations to join organizations
+export const organizationInvitations = pgTable('organization_invitations', {
+	id: uuid('id').primaryKey().notNull().defaultRandom(),
+	organizationId: uuid('organization_id')
+		.notNull()
+		.references(() => organizations.id, { onDelete: 'cascade' }),
+	invitedByUserId: uuid('invited_by_user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	email: varchar('email', { length: 255 }).notNull(),
+	role: varchar('role', { length: 50 }).notNull().default('collector'),
+	token: varchar('token', { length: 255 }).unique().notNull(),
+	used: boolean('used').notNull().default(false),
+	usedAt: timestamp('used_at'),
+	usedByUserId: uuid('used_by_user_id')
+		.references(() => users.id, { onDelete: 'set null' }),
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+	organizationIdx: index('idx_invitations_organization').on(table.organizationId),
+	tokenIdx: uniqueIndex('idx_invitations_token').on(table.token),
+	usedIdx: index('idx_invitations_used').on(table.used),
+	expiresIdx: index('idx_invitations_expires').on(table.expiresAt),
+}));
+export type OrganizationInvitation = InferSelectModel<typeof organizationInvitations>;
+export type PartialOrganizationInvitation = Partial<OrganizationInvitation>;
+
+// AI Usage Logs table - Track AI usage for billing
+export const aiUsageLogs = pgTable('ai_usage_logs', {
+	id: uuid('id').primaryKey().notNull().defaultRandom(),
+	organizationId: uuid('organization_id')
+		.notNull()
+		.references(() => organizations.id, { onDelete: 'cascade' }),
+	userId: uuid('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	collectorId: uuid('collector_id')
+		.references(() => collectors.id, { onDelete: 'set null' }),
+	usageType: varchar('usage_type', { length: 50 }).notNull(), // email_generation, email_analysis, other
+	model: varchar('model', { length: 100 }).notNull(),
+	promptTokens: integer('prompt_tokens').notNull().default(0),
+	completionTokens: integer('completion_tokens').notNull().default(0),
+	totalTokens: integer('total_tokens').notNull().default(0),
+	costCents: integer('cost_cents').notNull().default(0),
+	metadata: jsonb('metadata'), // email_id, thread_id, etc.
+	createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+	organizationIdx: index('idx_ai_usage_organization').on(table.organizationId),
+	userIdx: index('idx_ai_usage_user').on(table.userId),
+	collectorIdx: index('idx_ai_usage_collector').on(table.collectorId),
+	usageTypeIdx: index('idx_ai_usage_type').on(table.usageType),
+	createdAtIdx: index('idx_ai_usage_created').on(table.createdAt),
+}));
+export type AiUsageLog = InferSelectModel<typeof aiUsageLogs>;
+export type PartialAiUsageLog = Partial<AiUsageLog>;
+
 // Collectors table - AI profiles/agents that handle email threads
 export const collectors = pgTable('collectors', {
 	id: uuid('id').primaryKey().notNull().defaultRandom(),
+	organizationId: uuid('organization_id')
+		.notNull()
+		.references(() => organizations.id, { onDelete: 'cascade' }),
 	userId: uuid('user_id')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
@@ -62,17 +160,24 @@ export const collectors = pgTable('collectors', {
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => ({
+	organizationIdx: index('idx_collectors_organization').on(table.organizationId),
 	userIdx: index('idx_collectors_user').on(table.userId),
 	activeIdx: index('idx_collectors_active').on(table.active),
 	userActiveIdx: index('idx_collectors_user_active').on(table.userId, table.active),
+	orgActiveIdx: index('idx_collectors_org_active').on(table.organizationId, table.active),
 }));
 export type Collector = InferSelectModel<typeof collectors>;
 export type PartialCollector = Partial<Collector>;
 
 export const debtors = pgTable('debtors', {
 	id: uuid('id').primaryKey().notNull().defaultRandom(),
-	userId: uuid('user_id')
-		.references(() => users.id, { onDelete: 'set null' }),
+	organizationId: uuid('organization_id')
+		.notNull()
+		.references(() => organizations.id, { onDelete: 'cascade' }),
+	createdByUserId: uuid('created_by_user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	visibility: varchar('visibility', { length: 20 }).notNull().default('private'), // private, public
 	firstName: varchar('first_name', { length: 100 }).notNull(),
 	lastName: varchar('last_name', { length: 100 }).notNull(),
 	email: varchar('email', { length: 255 }).unique(),
@@ -89,7 +194,10 @@ export const debtors = pgTable('debtors', {
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => ({
-	userIdx: index('idx_debtors_user').on(table.userId),
+	organizationIdx: index('idx_debtors_organization').on(table.organizationId),
+	createdByIdx: index('idx_debtors_created_by').on(table.createdByUserId),
+	visibilityIdx: index('idx_debtors_visibility').on(table.visibility),
+	orgVisibilityIdx: index('idx_debtors_org_visibility').on(table.organizationId, table.visibility),
 	emailIdx: uniqueIndex('idx_debtors_email').on(table.email),
 }));
 export type Debtor = InferSelectModel<typeof debtors>;
@@ -130,6 +238,9 @@ export const emails = pgTable(
 	'emails',
 	{
 		id: uuid('id').primaryKey().notNull().defaultRandom(),
+		organizationId: uuid('organization_id')
+			.notNull()
+			.references(() => organizations.id, { onDelete: 'cascade' }),
 		debtId: uuid('debt_id')
 			.notNull()
 			.references(() => debts.id, { onDelete: 'cascade' }),
@@ -157,6 +268,7 @@ export const emails = pgTable(
 		createdAt: timestamp('created_at').defaultNow(),
 	},
 	(table) => ({
+		organizationIdx: index('idx_emails_organization').on(table.organizationId),
 		debtIdx: index('idx_emails_debt').on(table.debtId),
 		timestampIdx: index('idx_emails_timestamp').on(table.timestamp),
 		threadTimestampIdx: index('idx_emails_thread_timestamp').on(table.threadId, table.timestamp),
@@ -172,6 +284,9 @@ export const emailThreads = pgTable(
 	'email_threads',
 	{
 		id: uuid('id').primaryKey().notNull().defaultRandom(),
+		organizationId: uuid('organization_id')
+			.notNull()
+			.references(() => organizations.id, { onDelete: 'cascade' }),
 		debtorId: uuid('debtor_id')
 			.notNull()
 			.references(() => debtors.id, { onDelete: 'cascade' }),
@@ -183,6 +298,7 @@ export const emailThreads = pgTable(
 		updatedAt: timestamp('updated_at').defaultNow(),
 	},
 	(table) => ({
+		organizationIdx: index('idx_email_threads_organization').on(table.organizationId),
 		debtorIdx: index('idx_email_threads_debtor').on(table.debtorId),
 		collectorIdx: index('idx_email_threads_collector').on(table.collectorId),
 		escalatedIdx: index('idx_email_threads_escalated').on(table.escalated),

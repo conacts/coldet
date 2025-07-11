@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pnpm test:*)",
       "Bash(pnpm remove:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(timeout 30s pnpm test)"
     ],
     "deny": []
   }

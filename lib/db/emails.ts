@@ -5,6 +5,7 @@ import { emails } from '@/lib/db/schema';
 import { generateUUID } from '@/lib/utils';
 
 export async function createEmail({
+	organizationId,
 	debtId,
 	threadId,
 	fromEmailAddress,
@@ -18,6 +19,7 @@ export async function createEmail({
 	complianceChecked = true,
 	replyTo,
 }: {
+	organizationId: string;
 	debtId: string;
 	threadId: string;
 	fromEmailAddress: string;
@@ -35,6 +37,7 @@ export async function createEmail({
 		const [email] = await db
 			.insert(emails)
 			.values({
+				organizationId,
 				debtId,
 				threadId,
 				fromEmailAddress,
@@ -51,8 +54,6 @@ export async function createEmail({
 			.returning();
 		return email;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error creating email', error);
 		throw error;
 	}
 }
@@ -66,8 +67,6 @@ export async function getEmailById(id: string): Promise<Email | null> {
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error getting email by id', error);
 		throw error;
 	}
 }
@@ -83,8 +82,6 @@ export async function getEmailByMessageId(
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error getting email by message id', error);
 		throw error;
 	}
 }
@@ -98,8 +95,6 @@ export async function updateEmailOpened(messageId: string): Promise<Email | null
 			.returning();
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error updating email opened', error);
 		throw error;
 	}
 }
@@ -113,8 +108,6 @@ export async function updateEmailClicked(messageId: string): Promise<Email | nul
 			.returning();
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error updating email clicked', error);
 		throw error;
 	}
 }
@@ -128,8 +121,6 @@ export async function updateEmailBounced(messageId: string): Promise<Email | nul
 			.returning();
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error updating email bounced', error);
 		throw error;
 	}
 }
@@ -143,8 +134,6 @@ export async function updateEmailComplained(messageId: string): Promise<Email | 
 			.returning();
 		return result[0] ?? null;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error updating email complained', error);
 		throw error;
 	}
 }

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import type { User } from '@/lib/db/schema';
 import { users } from '@/lib/db/schema';
@@ -40,7 +40,6 @@ export async function createUser({
 			.returning();
 		return user;
 	} catch (error) {
-		console.error('Error creating user', error);
 		throw error;
 	}
 }
@@ -54,7 +53,6 @@ export async function getUserById(id: string): Promise<User | null> {
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		console.error('Error getting user by id', error);
 		throw error;
 	}
 }
@@ -68,7 +66,6 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		console.error('Error getting user by email', error);
 		throw error;
 	}
 }
@@ -85,7 +82,6 @@ export async function updateUser(
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error updating user', error);
 		throw error;
 	}
 }
@@ -99,7 +95,6 @@ export async function updateUserLastLogin(id: string): Promise<User | null> {
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error updating user last login', error);
 		throw error;
 	}
 }
@@ -113,7 +108,6 @@ export async function deactivateUser(id: string): Promise<User | null> {
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error deactivating user', error);
 		throw error;
 	}
 }
@@ -127,7 +121,6 @@ export async function activateUser(id: string): Promise<User | null> {
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error activating user', error);
 		throw error;
 	}
 }
@@ -139,7 +132,6 @@ export async function getActiveUsers(): Promise<User[]> {
 			.from(users)
 			.where(eq(users.active, true));
 	} catch (error) {
-		console.error('Error getting active users', error);
 		throw error;
 	}
 }
@@ -153,7 +145,6 @@ export async function verifyUserEmail(id: string): Promise<User | null> {
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error verifying user email', error);
 		throw error;
 	}
 }
@@ -170,7 +161,6 @@ export async function updateUserPassword(
 			.returning();
 		return user ?? null;
 	} catch (error) {
-		console.error('Error updating user password', error);
 		throw error;
 	}
 }
@@ -181,7 +171,6 @@ export async function deleteUser(id: string): Promise<void> {
 			.delete(users)
 			.where(eq(users.id, id));
 	} catch (error) {
-		console.error('Error deleting user', error);
 		throw error;
 	}
 }

@@ -3,6 +3,8 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { sql } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
+import { createOrganization, type CreateOrganizationParams } from '@/lib/db/organizations';
+import { createUser, type CreateUserParams } from '@/lib/db/users';
 
 // Create in-memory Postgres database for testing
 export async function createTestDb() {
@@ -10,7 +12,20 @@ export async function createTestDb() {
   const db = drizzle({ client, schema });
   
   // Create tables manually with proper Postgres syntax
-  // Users table first (no dependencies)
+  // Organizations table first (no dependencies)
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS organizations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(200) NOT NULL,
+      description TEXT,
+      settings JSONB,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  
+  // Users table (no dependencies)
   await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -28,10 +43,49 @@ export async function createTestDb() {
     );
   `);
   
-  // Collectors table (depends on users)
+  // User Organization Memberships table (depends on users and organizations)
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS user_organization_memberships (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL,
+      organization_id UUID NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'collector',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      UNIQUE (user_id, organization_id)
+    );
+  `);
+  
+  // Organization Invitations table (depends on organizations and users)
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS organization_invitations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL,
+      invited_by_user_id UUID NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'collector',
+      token VARCHAR(255) UNIQUE NOT NULL,
+      used BOOLEAN NOT NULL DEFAULT FALSE,
+      used_at TIMESTAMP,
+      used_by_user_id UUID,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      FOREIGN KEY (invited_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
+  
+  // Collectors table (depends on users and organizations)
   await client.query(`
     CREATE TABLE IF NOT EXISTS collectors (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL,
       user_id UUID NOT NULL,
       name VARCHAR(100) NOT NULL,
       description TEXT,
@@ -45,15 +99,39 @@ export async function createTestDb() {
       active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
   
-  // Debtors table (depends on users)
+  // AI Usage Logs table (depends on organizations, users, collectors)
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ai_usage_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL,
+      user_id UUID NOT NULL,
+      collector_id UUID,
+      usage_type VARCHAR(50) NOT NULL,
+      model VARCHAR(100) NOT NULL,
+      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+      completion_tokens INTEGER NOT NULL DEFAULT 0,
+      total_tokens INTEGER NOT NULL DEFAULT 0,
+      cost_cents INTEGER NOT NULL DEFAULT 0,
+      metadata JSONB,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
+    );
+  `);
+  
+  // Debtors table (depends on organizations and users)
   await client.query(`
     CREATE TABLE IF NOT EXISTS debtors (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID,
+      organization_id UUID NOT NULL,
+      created_by_user_id UUID NOT NULL,
+      visibility VARCHAR(20) NOT NULL DEFAULT 'private',
       first_name VARCHAR(100) NOT NULL,
       last_name VARCHAR(100) NOT NULL,
       email VARCHAR(255) UNIQUE,
@@ -69,7 +147,8 @@ export async function createTestDb() {
       currently_collecting BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
   
@@ -91,12 +170,14 @@ export async function createTestDb() {
   await client.query(`
     CREATE TABLE IF NOT EXISTS email_threads (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL,
       debtor_id UUID NOT NULL,
       collector_id UUID,
       subject VARCHAR(500),
       escalated BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
       FOREIGN KEY (debtor_id) REFERENCES debtors(id) ON DELETE CASCADE,
       FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
     );
@@ -105,6 +186,7 @@ export async function createTestDb() {
   await client.query(`
     CREATE TABLE IF NOT EXISTS emails (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL,
       debt_id UUID NOT NULL,
       thread_id UUID NOT NULL,
       collector_id UUID,
@@ -123,6 +205,7 @@ export async function createTestDb() {
       reply_to VARCHAR(255),
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
       FOREIGN KEY (debt_id) REFERENCES debts(id) ON DELETE CASCADE,
       FOREIGN KEY (thread_id) REFERENCES email_threads(id) ON DELETE SET NULL,
       FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
@@ -132,6 +215,35 @@ export async function createTestDb() {
   return { db, client };
 }
 
+// Helper function to create basic test prerequisites
+export async function createTestPrerequisites() {
+  // Create test organization
+  const organizationParams: CreateOrganizationParams = {
+    name: 'Test Organization',
+    description: 'Test organization for unit tests',
+    active: true,
+  };
+  const organization = await createOrganization(organizationParams);
+
+  // Create test user
+  const userParams: CreateUserParams = {
+    firstName: 'Test',
+    lastName: 'User',
+    email: 'test.user@example.com',
+    role: 'collector',
+    active: true,
+    emailVerified: true,
+  };
+  const user = await createUser(userParams);
+
+  return {
+    organizationId: organization.id,
+    userId: user.id,
+    organization,
+    user,
+  };
+}
+
 // Helper function to clear all tables
 export async function clearTables(client: PGlite) {
   // Clear tables in reverse dependency order
@@ -139,6 +251,10 @@ export async function clearTables(client: PGlite) {
   await client.query('DELETE FROM email_threads');
   await client.query('DELETE FROM debts');
   await client.query('DELETE FROM debtors');
+  await client.query('DELETE FROM ai_usage_logs');
   await client.query('DELETE FROM collectors');
+  await client.query('DELETE FROM organization_invitations');
+  await client.query('DELETE FROM user_organization_memberships');
   await client.query('DELETE FROM users');
+  await client.query('DELETE FROM organizations');
 }

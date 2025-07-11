@@ -4,6 +4,7 @@ import type { Collector } from '@/lib/db/schema';
 import { collectors } from '@/lib/db/schema';
 
 export interface CreateCollectorParams {
+	organizationId: string;
 	userId: string;
 	name: string;
 	description?: string | null;
@@ -13,11 +14,12 @@ export interface CreateCollectorParams {
 	maxTokens?: number;
 	canEscalate?: boolean;
 	canReply?: boolean;
-	config?: Record<string, any> | null;
+	config?: Record<string, unknown> | null;
 	active?: boolean;
 }
 
 export async function createCollector({
+	organizationId,
 	userId,
 	name,
 	description,
@@ -34,6 +36,7 @@ export async function createCollector({
 		const [collector] = await db
 			.insert(collectors)
 			.values({
+				organizationId,
 				userId,
 				name,
 				description,
@@ -49,7 +52,6 @@ export async function createCollector({
 			.returning();
 		return collector;
 	} catch (error) {
-		console.error('Error creating collector', error);
 		throw error;
 	}
 }
@@ -63,43 +65,79 @@ export async function getCollectorById(id: string): Promise<Collector | null> {
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		console.error('Error getting collector by id', error);
 		throw error;
 	}
 }
 
-export async function getCollectorsByUserId(userId: string): Promise<Collector[]> {
+export async function getCollectorsByOrganizationId(organizationId: string): Promise<Collector[]> {
 	try {
 		return await db
 			.select()
 			.from(collectors)
-			.where(eq(collectors.userId, userId));
+			.where(eq(collectors.organizationId, organizationId));
 	} catch (error) {
-		console.error('Error getting collectors by user id', error);
 		throw error;
 	}
 }
 
-export async function getActiveCollectorsByUserId(userId: string): Promise<Collector[]> {
+export async function getActiveCollectorsByOrganizationId(organizationId: string): Promise<Collector[]> {
 	try {
 		return await db
 			.select()
 			.from(collectors)
 			.where(
 				and(
+					eq(collectors.organizationId, organizationId),
+					eq(collectors.active, true)
+				)
+			);
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function getCollectorsByUserId(
+	organizationId: string,
+	userId: string
+): Promise<Collector[]> {
+	try {
+		return await db
+			.select()
+			.from(collectors)
+			.where(
+				and(
+					eq(collectors.organizationId, organizationId),
+					eq(collectors.userId, userId)
+				)
+			);
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function getActiveCollectorsByUserId(
+	organizationId: string,
+	userId: string
+): Promise<Collector[]> {
+	try {
+		return await db
+			.select()
+			.from(collectors)
+			.where(
+				and(
+					eq(collectors.organizationId, organizationId),
 					eq(collectors.userId, userId),
 					eq(collectors.active, true)
 				)
 			);
 	} catch (error) {
-		console.error('Error getting active collectors by user id', error);
 		throw error;
 	}
 }
 
 export async function updateCollector(
 	id: string,
-	updates: Partial<Omit<Collector, 'id' | 'userId' | 'createdAt'>>
+	updates: Partial<Omit<Collector, 'id' | 'organizationId' | 'userId' | 'createdAt'>>
 ): Promise<Collector | null> {
 	try {
 		const [collector] = await db
@@ -109,7 +147,6 @@ export async function updateCollector(
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error updating collector', error);
 		throw error;
 	}
 }
@@ -126,14 +163,13 @@ export async function updateCollectorPrompt(
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error updating collector prompt', error);
 		throw error;
 	}
 }
 
 export async function updateCollectorConfig(
 	id: string,
-	config: Record<string, any>
+	config: Record<string, unknown>
 ): Promise<Collector | null> {
 	try {
 		const [collector] = await db
@@ -143,7 +179,6 @@ export async function updateCollectorConfig(
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error updating collector config', error);
 		throw error;
 	}
 }
@@ -157,7 +192,6 @@ export async function deactivateCollector(id: string): Promise<Collector | null>
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error deactivating collector', error);
 		throw error;
 	}
 }
@@ -171,7 +205,6 @@ export async function activateCollector(id: string): Promise<Collector | null> {
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error activating collector', error);
 		throw error;
 	}
 }
@@ -182,7 +215,6 @@ export async function deleteCollector(id: string): Promise<void> {
 			.delete(collectors)
 			.where(eq(collectors.id, id));
 	} catch (error) {
-		console.error('Error deleting collector', error);
 		throw error;
 	}
 }
@@ -194,12 +226,33 @@ export async function getAllActiveCollectors(): Promise<Collector[]> {
 			.from(collectors)
 			.where(eq(collectors.active, true));
 	} catch (error) {
-		console.error('Error getting all active collectors', error);
 		throw error;
 	}
 }
 
 export async function getCollectorByName(
+	organizationId: string,
+	name: string
+): Promise<Collector | null> {
+	try {
+		const result = await db
+			.select()
+			.from(collectors)
+			.where(
+				and(
+					eq(collectors.organizationId, organizationId),
+					eq(collectors.name, name)
+				)
+			)
+			.limit(1);
+		return result[0] ?? null;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function getCollectorByNameAndUser(
+	organizationId: string,
 	userId: string,
 	name: string
 ): Promise<Collector | null> {
@@ -209,6 +262,7 @@ export async function getCollectorByName(
 			.from(collectors)
 			.where(
 				and(
+					eq(collectors.organizationId, organizationId),
 					eq(collectors.userId, userId),
 					eq(collectors.name, name)
 				)
@@ -216,7 +270,6 @@ export async function getCollectorByName(
 			.limit(1);
 		return result[0] ?? null;
 	} catch (error) {
-		console.error('Error getting collector by name', error);
 		throw error;
 	}
 }
@@ -238,7 +291,80 @@ export async function updateCollectorCapabilities(
 			.returning();
 		return collector ?? null;
 	} catch (error) {
-		console.error('Error updating collector capabilities', error);
+		throw error;
+	}
+}
+
+export async function canUserAccessCollector(
+	collectorId: string,
+	userId: string,
+	userRole: string
+): Promise<boolean> {
+	try {
+		const collector = await getCollectorById(collectorId);
+		if (!collector) {
+			return false;
+		}
+
+		// Admins can access all collectors in their organization
+		if (userRole === 'admin') {
+			return true;
+		}
+
+		// Users can access their own collectors
+		return collector.userId === userId;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function canUserModifyCollector(
+	collectorId: string,
+	userId: string,
+	userRole: string
+): Promise<boolean> {
+	try {
+		const collector = await getCollectorById(collectorId);
+		if (!collector) return false;
+
+		// Admins can modify all collectors in their organization
+		if (userRole === 'admin') return true;
+
+		// Users can only modify their own collectors
+		return collector.userId === userId;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function getCollectorCount(organizationId: string): Promise<number> {
+	try {
+		const result = await db
+			.select({ count: collectors.id })
+			.from(collectors)
+			.where(eq(collectors.organizationId, organizationId));
+		return result.length;
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function getCollectorCountByUser(
+	organizationId: string,
+	userId: string
+): Promise<number> {
+	try {
+		const result = await db
+			.select({ count: collectors.id })
+			.from(collectors)
+			.where(
+				and(
+					eq(collectors.organizationId, organizationId),
+					eq(collectors.userId, userId)
+				)
+			);
+		return result.length;
+	} catch (error) {
 		throw error;
 	}
 }

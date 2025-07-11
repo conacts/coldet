@@ -52,16 +52,18 @@ export async function getEmailsByThreadId(threadId: string): Promise<Email[]> {
 		.orderBy(desc(emails.timestamp));
 }
 
-export async function createEmailThread(debtorId: string, subject: string): Promise<EmailThread> {
+export async function createEmailThread(
+	organizationId: string,
+	debtorId: string,
+	subject: string
+): Promise<EmailThread> {
 	try {
 		const [thread] = await db
 			.insert(emailThreads)
-			.values({ debtorId, subject })
+			.values({ organizationId, debtorId, subject })
 			.returning();
 		return thread;
 	} catch (error) {
-		// biome-ignore lint/suspicious/noConsole: Debug logging for webhook testing
-		console.error('Error creating email thread', error);
 		throw error;
 	}
 }

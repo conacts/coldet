@@ -1,6 +1,7 @@
 import { render } from '@react-email/render';
 import { EmailResponseEmail } from '@/emails/email-response';
 import { sendEmail } from '@/lib/aws/ses';
+import { getDebtorById } from '@/lib/db/debtors';
 import { getDebtByDebtorId, getDebtsByDebtorEmail } from '@/lib/db/debts';
 import {
 	createEmailThread,
@@ -14,7 +15,6 @@ import { generateResponseEmail } from '@/lib/llms';
 import type { SesSnsNotification } from '@/types/aws-ses';
 import { extractMessageIdFromEmailHeader } from './utils';
 
-
 export interface SendEmailResponseParams {
 	to: string;
 	emailResponse: EmailResponse;
@@ -25,7 +25,7 @@ export interface SendEmailResponseParams {
 }
 
 export async function handleReceivedEmail(
-	notification: SesSnsNotification,
+	notification: SesSnsNotification
 ): Promise<void> {
 	const sender = parseSESInboundEmailSender(notification.mail);
 	const { thread, replyToMessageId } = await findOrCreateEmailThread(
@@ -48,6 +48,7 @@ export async function handleReceivedEmail(
 	const inboundMessageId = notification.mail.messageId;
 
 	const inboundEmail = await createEmail({
+		organizationId: thread.organizationId,
 		debtId,
 		threadId,
 		fromEmailAddress: sender,
@@ -92,11 +93,18 @@ export async function findOrCreateEmailThread(
 
 	// If no existing thread found, create a new one
 	if (!thread) {
-		const debtors = await getDebtsByDebtorEmail(sender);
-		if (!debtors.length) {
+		const debts = await getDebtsByDebtorEmail(sender);
+		if (!debts.length) {
 			throw new Error('No debtor found for sender email');
 		}
-		thread = await createEmailThread(debtors[0].debtorId, subject);
+
+		// Get the debtor info to access organizationId
+		const debtor = await getDebtorById(debts[0].debtorId);
+		if (!debtor) {
+			throw new Error('No debtor found for debt');
+		}
+
+		thread = await createEmailThread(debtor.organizationId, debtor.id, subject);
 	}
 
 	// Determine the replyToMessageId for the inbound email
@@ -128,6 +136,7 @@ export async function sendEmailResponse({
 	});
 
 	const savedEmail = await createEmail({
+		organizationId: thread.organizationId,
 		debtId: debt.id,
 		threadId: thread.id,
 		fromEmailAddress: fromEmail,
@@ -142,9 +151,7 @@ export async function sendEmailResponse({
 	return savedEmail;
 }
 
-
 // ----------------
-
 
 export function parseSESInboundEmailSender(
 	mail: SesSnsNotification['mail']

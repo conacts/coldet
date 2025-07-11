@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
-import { createTestDb, clearTables } from '../setup-db';
+import { createTestDb, clearTables, createTestPrerequisites } from '../setup-db';
 import { createDebtor } from '@/lib/db/debtors';
 import { createDebt } from '@/lib/db/debts';
 import { createEmailThread } from '@/lib/db/email-threads';
@@ -39,11 +39,19 @@ const mockedSendEmail = vi.mocked(sendEmail);
 const mockedRender = vi.mocked(render);
 
 describe('Initial Contact Flow E2E Test', () => {
+  let testOrganizationId: string;
+  let testUserId: string;
+
   beforeEach(async () => {
     const testSetup = await createTestDb();
     testDb = testSetup.db;
     client = testSetup.client;
     await clearTables(client);
+
+    // Create prerequisite organization and user
+    const prerequisites = await createTestPrerequisites();
+    testOrganizationId = prerequisites.organizationId;
+    testUserId = prerequisites.userId;
 
     // Reset mocks
     vi.clearAllMocks();
@@ -57,6 +65,8 @@ describe('Initial Contact Flow E2E Test', () => {
     it('should successfully execute the complete 3-step workflow', async () => {
       // Step 1: Create Debtor (simulating createDebtorAction)
       const debtorParams = {
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
@@ -121,7 +131,7 @@ describe('Initial Contact Flow E2E Test', () => {
       });
 
       // Create email thread
-      const thread = await createEmailThread(debtor.id, emailSubject);
+      const thread = await createEmailThread(testOrganizationId, debtor.id, emailSubject);
       
       expect(thread.id).toBeTruthy();
       expect(thread.debtorId).toBe(debtor.id);
@@ -129,6 +139,7 @@ describe('Initial Contact Flow E2E Test', () => {
 
       // Create email record
       const email = await createEmail({
+        organizationId: testOrganizationId,
         debtId: debt.id,
         threadId: thread.id,
         fromEmailAddress: fromEmail,
@@ -153,6 +164,8 @@ describe('Initial Contact Flow E2E Test', () => {
     it('should handle the workflow with optional phone number', async () => {
       // Step 1: Create Debtor without phone
       const debtorParams = {
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'jane.smith@example.com',
@@ -176,8 +189,9 @@ describe('Initial Contact Flow E2E Test', () => {
       expect(Number(debt.totalOwed)).toBe(500.00);
 
       // Step 3: Send Email
-      const thread = await createEmailThread(debtor.id, 'Initial Contact');
+      const thread = await createEmailThread(testOrganizationId, debtor.id, 'Initial Contact');
       const email = await createEmail({
+        organizationId: testOrganizationId,
         debtId: debt.id,
         threadId: thread.id,
         fromEmailAddress: 'chris@coldets.com',
@@ -192,6 +206,8 @@ describe('Initial Contact Flow E2E Test', () => {
     it('should maintain proper foreign key relationships throughout the flow', async () => {
       // Execute the complete flow
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Alice',
         lastName: 'Johnson',
         email: 'alice.johnson@example.com',
@@ -206,9 +222,10 @@ describe('Initial Contact Flow E2E Test', () => {
         status: 'active',
       });
 
-      const thread = await createEmailThread(debtor.id, 'FK Relationship Test');
+      const thread = await createEmailThread(testOrganizationId, debtor.id, 'FK Relationship Test');
       
       const email = await createEmail({
+        organizationId: testOrganizationId,
         debtId: debt.id,
         threadId: thread.id,
         fromEmailAddress: 'test@example.com',
@@ -258,6 +275,8 @@ describe('Initial Contact Flow E2E Test', () => {
     it('should handle debtor creation failure', async () => {
       // First create a debtor with a specific email
       await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'John',
         lastName: 'Doe',
         email: 'duplicate@example.com',
@@ -267,6 +286,8 @@ describe('Initial Contact Flow E2E Test', () => {
 
       // Test duplicate email constraint violation
       await expect(createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'duplicate@example.com', // Duplicate email should cause unique constraint violation
@@ -293,6 +314,8 @@ describe('Initial Contact Flow E2E Test', () => {
 
     it('should handle email creation failure with invalid debt ID', async () => {
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Test',
         lastName: 'User',
         email: 'test@example.com',
@@ -300,9 +323,10 @@ describe('Initial Contact Flow E2E Test', () => {
         currentlyCollecting: false,
       });
 
-      const thread = await createEmailThread(debtor.id, 'Test Thread');
+      const thread = await createEmailThread(testOrganizationId, debtor.id, 'Test Thread');
 
       await expect(createEmail({
+        organizationId: testOrganizationId,
         debtId: '550e8400-e29b-41d4-a716-446655440000',
         threadId: thread.id,
         fromEmailAddress: 'test@example.com',
@@ -314,6 +338,8 @@ describe('Initial Contact Flow E2E Test', () => {
     it('should handle SES email sending failure', async () => {
       // Setup successful database operations
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Test',
         lastName: 'User',
         email: 'test@example.com',
@@ -344,6 +370,8 @@ describe('Initial Contact Flow E2E Test', () => {
   describe('Data Validation in Flow', () => {
     it('should validate decimal precision for debt amounts', async () => {
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Test',
         lastName: 'User',
         email: 'test@example.com',
@@ -364,6 +392,8 @@ describe('Initial Contact Flow E2E Test', () => {
 
     it('should validate email format in debtor creation', async () => {
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Test',
         lastName: 'User',
         email: 'user+tag@sub-domain.example-site.co.uk',
@@ -376,6 +406,8 @@ describe('Initial Contact Flow E2E Test', () => {
 
     it('should handle special characters in creditor names', async () => {
       const debtor = await createDebtor({
+        organizationId: testOrganizationId,
+        createdByUserId: testUserId,
         firstName: 'Test',
         lastName: 'User',
         email: 'test@example.com',
