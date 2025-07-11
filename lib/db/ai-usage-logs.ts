@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sum } from 'drizzle-orm';
+import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import type { AiUsageLog } from '@/lib/db/schema';
 import { aiUsageLogs } from '@/lib/db/schema';

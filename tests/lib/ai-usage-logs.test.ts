@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	type CreateAiUsageLogParams,
 	createAiUsageLog,
-	deleteAiUsageLog,
 	deleteAiUsageLogsByDateRange,
 	deleteAiUsageLogsByOrganizationId,
 	getAiUsageLogsByCollectorId,
