@@ -1,10 +1,12 @@
 'use client';
 
-import { ChevronUp, LogOutIcon, LoaderIcon, MoonIcon, SettingsIcon } from 'lucide-react';
-import Image from 'next/image';
+import { ChevronUp, LoaderIcon, LogOutIcon, MoonIcon, SettingsIcon } from 'lucide-react';
 import type { User } from 'next-auth';
 import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -18,8 +20,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();

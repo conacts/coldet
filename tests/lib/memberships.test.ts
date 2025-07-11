@@ -55,6 +55,7 @@ describe('Memberships Database Operations', () => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john.doe@example.com',
+			password: 'password',
 		};
 		const user1 = await createUser(user1Params);
 		testUser1Id = user1.id;
@@ -63,6 +64,7 @@ describe('Memberships Database Operations', () => {
 			firstName: 'Jane',
 			lastName: 'Smith',
 			email: 'jane.smith@example.com',
+			password: 'password',
 		};
 		const user2 = await createUser(user2Params);
 		testUser2Id = user2.id;

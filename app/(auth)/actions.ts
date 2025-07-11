@@ -66,10 +66,14 @@ export const register = async (
 		if (user) {
 			return { status: 'user_exists' } as RegisterActionState;
 		}
+
 		await createUser({
 			email: validatedData.email,
-			hashedPassword: validatedData.password,
+			password: validatedData.password,
+			emailVerified: false,
+			active: true,
 		});
+
 		await signIn('credentials', {
 			email: validatedData.email,
 			password: validatedData.password,

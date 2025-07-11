@@ -1,15 +1,9 @@
 'use client';
 
-// replace with lucide
-import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { User } from 'next-auth';
 import { Logo } from '@/components/logo';
-import { ScheduleCalendar } from '@/components/schedule-calendar';
-// import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
-import { Button } from '@/components/ui/button';
 import {
 	Sidebar,
 	SidebarContent,
@@ -19,10 +13,8 @@ import {
 	SidebarRail,
 	useSidebar,
 } from '@/components/ui/sidebar';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
-	const router = useRouter();
 	const { setOpenMobile } = useSidebar();
 
 	return (
@@ -42,28 +34,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 								Coldets
 							</span>
 						</Link>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									className="h-fit p-2"
-									onClick={() => {
-										setOpenMobile(false);
-										router.push('/dashboard');
-										router.refresh();
-									}}
-									type="button"
-									variant="outline"
-								>
-									<PlusIcon />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent align="end">New Chat</TooltipContent>
-						</Tooltip>
 					</div>
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<ScheduleCalendar redirectOnSelect={true} />
+				{/* <ScheduleCalendar redirectOnSelect={true} /> */}
 				{/* <SidebarHistory user={user} /> */}
 			</SidebarContent>
 			<SidebarRail />

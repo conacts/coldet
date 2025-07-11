@@ -31,7 +31,7 @@ vi.mock('@/lib/db/client', () => ({
 	db: new Proxy(
 		{},
 		{
-			get: (target, prop) => {
+			get: (_target, prop) => {
 				return testDb[prop as keyof typeof testDb];
 			},
 		}
@@ -58,6 +58,7 @@ describe('Collectors Database Operations', () => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john.doe@example.com',
+			password: 'password',
 		};
 		const user = await createUser(userParams);
 		testUserId = user.id;

@@ -1,19 +1,22 @@
 import { PGlite } from '@electric-sql/pglite';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
-import { sql } from 'drizzle-orm';
+import {
+	type CreateOrganizationParams,
+	createOrganization,
+} from '@/lib/db/organizations';
 import * as schema from '@/lib/db/schema';
-import { createOrganization, type CreateOrganizationParams } from '@/lib/db/organizations';
-import { createUser, type CreateUserParams } from '@/lib/db/users';
+import { type CreateUserParams, createUser } from '@/lib/db/users';
 
 // Create in-memory Postgres database for testing
 export async function createTestDb() {
-  const client = new PGlite();
-  const db = drizzle({ client, schema });
-  
-  // Create tables manually with proper Postgres syntax
-  // Organizations table first (no dependencies)
-  await client.query(`
+	const client = new PGlite();
+	const db = drizzle({ client, schema });
+
+	// Create tables manually with proper Postgres syntax
+	// Organizations table first (no dependencies)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS organizations (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(200) NOT NULL,
@@ -24,9 +27,9 @@ export async function createTestDb() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  
-  // Users table (no dependencies)
-  await client.query(`
+
+	// Users table (no dependencies)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       first_name VARCHAR(100) NOT NULL,
@@ -42,9 +45,9 @@ export async function createTestDb() {
       last_login_at TIMESTAMP
     );
   `);
-  
-  // User Organization Memberships table (depends on users and organizations)
-  await client.query(`
+
+	// User Organization Memberships table (depends on users and organizations)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS user_organization_memberships (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL,
@@ -59,9 +62,9 @@ export async function createTestDb() {
       UNIQUE (user_id, organization_id)
     );
   `);
-  
-  // Organization Invitations table (depends on organizations and users)
-  await client.query(`
+
+	// Organization Invitations table (depends on organizations and users)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS organization_invitations (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -80,9 +83,9 @@ export async function createTestDb() {
       FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
-  
-  // Collectors table (depends on users and organizations)
-  await client.query(`
+
+	// Collectors table (depends on users and organizations)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS collectors (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -103,9 +106,9 @@ export async function createTestDb() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
-  
-  // AI Usage Logs table (depends on organizations, users, collectors)
-  await client.query(`
+
+	// AI Usage Logs table (depends on organizations, users, collectors)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS ai_usage_logs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -124,9 +127,9 @@ export async function createTestDb() {
       FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
     );
   `);
-  
-  // Debtors table (depends on organizations and users)
-  await client.query(`
+
+	// Debtors table (depends on organizations and users)
+	await client.query(`
     CREATE TABLE IF NOT EXISTS debtors (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -151,8 +154,8 @@ export async function createTestDb() {
       FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
-  
-  await client.query(`
+
+	await client.query(`
     CREATE TABLE IF NOT EXISTS debts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       debtor_id UUID NOT NULL,
@@ -166,8 +169,8 @@ export async function createTestDb() {
       FOREIGN KEY (debtor_id) REFERENCES debtors(id) ON DELETE CASCADE
     );
   `);
-  
-  await client.query(`
+
+	await client.query(`
     CREATE TABLE IF NOT EXISTS email_threads (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -182,8 +185,8 @@ export async function createTestDb() {
       FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
     );
   `);
-  
-  await client.query(`
+
+	await client.query(`
     CREATE TABLE IF NOT EXISTS emails (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       organization_id UUID NOT NULL,
@@ -211,50 +214,50 @@ export async function createTestDb() {
       FOREIGN KEY (collector_id) REFERENCES collectors(id) ON DELETE SET NULL
     );
   `);
-  
-  return { db, client };
+
+	return { db, client };
 }
 
 // Helper function to create basic test prerequisites
 export async function createTestPrerequisites() {
-  // Create test organization
-  const organizationParams: CreateOrganizationParams = {
-    name: 'Test Organization',
-    description: 'Test organization for unit tests',
-    active: true,
-  };
-  const organization = await createOrganization(organizationParams);
+	// Create test organization
+	const organizationParams: CreateOrganizationParams = {
+		name: 'Test Organization',
+		description: 'Test organization for unit tests',
+		active: true,
+	};
+	const organization = await createOrganization(organizationParams);
 
-  // Create test user
-  const userParams: CreateUserParams = {
-    firstName: 'Test',
-    lastName: 'User',
-    email: 'test.user@example.com',
-    role: 'collector',
-    active: true,
-    emailVerified: true,
-  };
-  const user = await createUser(userParams);
+	// Create test user
+	const userParams: CreateUserParams = {
+		firstName: 'Test',
+		lastName: 'User',
+		email: 'test.user@example.com',
+		password: 'password',
+		active: true,
+		emailVerified: true,
+	};
+	const user = await createUser(userParams);
 
-  return {
-    organizationId: organization.id,
-    userId: user.id,
-    organization,
-    user,
-  };
+	return {
+		organizationId: organization.id,
+		userId: user.id,
+		organization,
+		user,
+	};
 }
 
 // Helper function to clear all tables
 export async function clearTables(client: PGlite) {
-  // Clear tables in reverse dependency order
-  await client.query('DELETE FROM emails');
-  await client.query('DELETE FROM email_threads');
-  await client.query('DELETE FROM debts');
-  await client.query('DELETE FROM debtors');
-  await client.query('DELETE FROM ai_usage_logs');
-  await client.query('DELETE FROM collectors');
-  await client.query('DELETE FROM organization_invitations');
-  await client.query('DELETE FROM user_organization_memberships');
-  await client.query('DELETE FROM users');
-  await client.query('DELETE FROM organizations');
+	// Clear tables in reverse dependency order
+	await client.query('DELETE FROM emails');
+	await client.query('DELETE FROM email_threads');
+	await client.query('DELETE FROM debts');
+	await client.query('DELETE FROM debtors');
+	await client.query('DELETE FROM ai_usage_logs');
+	await client.query('DELETE FROM collectors');
+	await client.query('DELETE FROM organization_invitations');
+	await client.query('DELETE FROM user_organization_memberships');
+	await client.query('DELETE FROM users');
+	await client.query('DELETE FROM organizations');
 }

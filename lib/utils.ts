@@ -1,3 +1,4 @@
+import { genSaltSync, hashSync } from 'bcrypt-ts';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -40,9 +41,9 @@ export function extractMessageIdFromEmailHeader(emailHeader: string): string | n
 	return messageId;
 }
 
-export function generateDummyPassword() {
-	const password = generateId(12);
-	const hashedPassword = generateHashedPassword(password);
+export function generateHashedPassword(password: string) {
+	const salt = genSaltSync(10);
+	const hash = hashSync(password, salt);
 
-	return hashedPassword;
+	return hash;
 }

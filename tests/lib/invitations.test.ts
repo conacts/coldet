@@ -27,7 +27,7 @@ let client: PGlite;
 
 vi.mock('@/lib/db/client', () => ({
   db: new Proxy({}, {
-    get: (target, prop) => {
+    get: (_target, prop) => {
       return testDb[prop as keyof typeof testDb];
     }
   })
@@ -48,6 +48,7 @@ describe('Invitations Database Operations', () => {
       firstName: 'Admin',
       lastName: 'User',
       email: 'admin@example.com',
+	  password: 'password',
     };
     const user = await createUser(userParams);
     testUserId = user.id;

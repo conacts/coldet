@@ -302,13 +302,13 @@ export async function canUserModifyDebtor(
 }
 
 export async function bulkCreateDebtors(
-	debtors: CreateDebtorParams[]
+	debtorsToCreate: CreateDebtorParams[]
 ): Promise<Debtor[]> {
 	try {
 		const result = await db
 			.insert(debtors)
 			.values(
-				debtors.map((debtor) => ({
+				debtorsToCreate.map((debtor) => ({
 					organizationId: debtor.organizationId,
 					createdByUserId: debtor.createdByUserId,
 					firstName: debtor.firstName,

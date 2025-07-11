@@ -37,6 +37,7 @@ import {
 import {
 	type CreateOrganizationParams,
 	createOrganization,
+	getOrganizationById,
 } from './organizations';
 import { type CreateUserParams, createUser } from './users';
 
@@ -163,12 +164,17 @@ export async function acceptInvitation({
 			role: invitation.role,
 		});
 
+		const organization = await getOrganizationById(invitation.organizationId);
+		if (!organization) {
+			throw new Error('Organization not found');
+		}
+
 		// Mark invitation as used
 		await useInvitation(token, newUser.id);
 
 		return {
 			user: newUser,
-			organization: { id: invitation.organizationId, name: invitation.organizationName, description: invitation.organizationDescription, settings: invitation.organizationSettings, active: invitation.organizationActive, createdAt: invitation.organizationCreatedAt, updatedAt: invitation.organizationUpdatedAt },
+			organization,
 			membership,
 			invitation,
 		};

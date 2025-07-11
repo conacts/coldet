@@ -24,7 +24,7 @@ vi.mock('@/lib/db/client', () => ({
   db: new Proxy(
     {},
     {
-      get: (target, prop) => {
+      get: (_target, prop) => {
         return testDb[prop as keyof typeof testDb];
       },
     }
@@ -46,7 +46,7 @@ describe('Users Database Operations', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         phone: '555-1234',
-        hashedPassword: 'hashed_password_123',
+        password: 'hashed_password_123',
         emailVerified: true,
         active: true,
       };
@@ -57,7 +57,7 @@ describe('Users Database Operations', () => {
       expect(result.lastName).toBe('Doe');
       expect(result.email).toBe('john.doe@example.com');
       expect(result.phone).toBe('555-1234');
-      expect(result.hashedPassword).toBe('hashed_password_123');
+      expect(result.hashedPassword).toBeDefined();
       expect(result.emailVerified).toBe(true);
       expect(result.active).toBe(true);
       expect(result.id).toBeTruthy();
@@ -70,7 +70,7 @@ describe('Users Database Operations', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'jane.smith@example.com',
-        hashedPassword: 'hashed_password_123',
+        password: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
@@ -79,7 +79,7 @@ describe('Users Database Operations', () => {
       expect(result.lastName).toBe('Smith');
       expect(result.email).toBe('jane.smith@example.com');
       expect(result.phone).toBeNull();
-      expect(result.hashedPassword).toBeNull();
+      expect(result.hashedPassword).toBeDefined();
       expect(result.emailVerified).toBe(false);
       expect(result.active).toBe(true);
     });
@@ -89,14 +89,14 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'duplicate@example.com',
-        hashedPassword: 'hashed_password_123',
+        password: 'hashed_password_123',
       };
 
       const userParams2: CreateUserParams = {
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'duplicate@example.com',
-        hashedPassword: 'hashed_password_123',
+        password: 'hashed_password_123',
       };
 
       await createUser(userParams1);
@@ -110,7 +110,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-        hashedPassword: 'hashed_password_123',
+        password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -132,7 +132,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -154,7 +154,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -182,7 +182,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -199,7 +199,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -219,14 +219,14 @@ describe('Users Database Operations', () => {
         firstName: 'Active',
         lastName: 'User',
         email: 'active@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const user2Params: CreateUserParams = {
         firstName: 'Inactive',
         lastName: 'User',
         email: 'inactive@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const activeUser = await createUser(user1Params);
@@ -246,7 +246,7 @@ describe('Users Database Operations', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         emailVerified: false,
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -263,7 +263,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-        hashedPassword: 'old_password',
+        password: 'old_password',
 		emailVerified: true,
 		active: true,
       };
@@ -284,7 +284,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -307,7 +307,7 @@ describe('Users Database Operations', () => {
         firstName: "John-Paul O'Connor",
         lastName: 'Müller-Schmidt',
         email: 'john.paul@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
@@ -320,7 +320,7 @@ describe('Users Database Operations', () => {
         firstName: '张',
         lastName: '三',
         email: 'zhang.san@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
@@ -333,12 +333,12 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-		hashedPassword: 'hashed_password_123',
+		password: 'hashed_password_123',
     };
 
       const result = await createUser(userParams);
       expect(result.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
     });
   });

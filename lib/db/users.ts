@@ -1,3 +1,4 @@
+import { hash } from 'bcrypt-ts';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import type { User } from '@/lib/db/schema';
@@ -8,7 +9,7 @@ export interface CreateUserParams {
 	lastName?: string;
 	email: string;
 	phone?: string | null;
-	hashedPassword: string;
+	password: string;
 	emailVerified?: boolean;
 	active?: boolean;
 }
@@ -18,11 +19,14 @@ export async function createUser({
 	lastName,
 	email,
 	phone,
-	hashedPassword,
+	password,
 	emailVerified = false,
 	active = true,
 }: CreateUserParams): Promise<User> {
 	try {
+		// Hash the password before storing
+		const hashedPassword = await hash(password, 10);
+
 		const [user] = await db
 			.insert(users)
 			.values({
@@ -83,6 +87,7 @@ export async function updateUser(
 	}
 }
 
+
 export async function updateUserLastLogin(id: string): Promise<User | null> {
 	try {
 		const [user] = await db
@@ -124,10 +129,7 @@ export async function activateUser(id: string): Promise<User | null> {
 
 export async function getActiveUsers(): Promise<User[]> {
 	try {
-		return await db
-			.select()
-			.from(users)
-			.where(eq(users.active, true));
+		return await db.select().from(users).where(eq(users.active, true));
 	} catch (error) {
 		throw error;
 	}
@@ -164,9 +166,7 @@ export async function updateUserPassword(
 
 export async function deleteUser(id: string): Promise<void> {
 	try {
-		await db
-			.delete(users)
-			.where(eq(users.id, id));
+		await db.delete(users).where(eq(users.id, id));
 	} catch (error) {
 		throw error;
 	}
