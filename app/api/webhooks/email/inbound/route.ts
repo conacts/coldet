@@ -10,7 +10,6 @@ export async function POST(request: NextRequest) {
 		if (sesMessage.notificationType !== 'Received') {
 			return new Response('Not a received email event', { status: 204 });
 		}
-		console.log('sesMessage', sesMessage);
 		// const previousOutboundMessageId = sesMessage.mail.messageId;
 		await handleReceivedEmail(sesMessage);
 		return new Response('Received email webhook', { status: 200 });
