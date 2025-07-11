@@ -4,14 +4,13 @@ import type { User } from '@/lib/db/schema';
 import { users } from '@/lib/db/schema';
 
 export interface CreateUserParams {
-	firstName: string;
-	lastName: string;
+	firstName?: string;
+	lastName?: string;
 	email: string;
 	phone?: string | null;
-	hashedPassword?: string | null;
+	hashedPassword: string;
 	emailVerified?: boolean;
 	active?: boolean;
-	role?: string;
 }
 
 export async function createUser({
@@ -22,7 +21,6 @@ export async function createUser({
 	hashedPassword,
 	emailVerified = false,
 	active = true,
-	role = 'collector',
 }: CreateUserParams): Promise<User> {
 	try {
 		const [user] = await db
@@ -35,7 +33,6 @@ export async function createUser({
 				hashedPassword,
 				emailVerified,
 				active,
-				role,
 			})
 			.returning();
 		return user;

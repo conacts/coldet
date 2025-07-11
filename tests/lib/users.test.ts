@@ -1,31 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
-import { createTestDb, clearTables } from '../setup-db';
-import { 
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  activateUser,
+  type CreateUserParams,
   createUser,
-  getUserById,
+  deactivateUser,
+  deleteUser,
+  getActiveUsers,
   getUserByEmail,
+  getUserById,
   updateUser,
   updateUserLastLogin,
-  deactivateUser,
-  activateUser,
-  getActiveUsers,
-  verifyUserEmail,
   updateUserPassword,
-  deleteUser,
-  type CreateUserParams
+  verifyUserEmail,
 } from '@/lib/db/users';
+import { clearTables, createTestDb } from '../setup-db';
 
 // Mock the db import to use our test database
 let testDb: Awaited<ReturnType<typeof createTestDb>>['db'];
 let client: PGlite;
 
 vi.mock('@/lib/db/client', () => ({
-  db: new Proxy({}, {
-    get: (target, prop) => {
-      return testDb[prop as keyof typeof testDb];
+  db: new Proxy(
+    {},
+    {
+      get: (target, prop) => {
+        return testDb[prop as keyof typeof testDb];
+      },
     }
-  })
+  ),
 }));
 
 describe('Users Database Operations', () => {
@@ -46,7 +49,6 @@ describe('Users Database Operations', () => {
         hashedPassword: 'hashed_password_123',
         emailVerified: true,
         active: true,
-        role: 'collector',
       };
 
       const result = await createUser(userParams);
@@ -58,7 +60,6 @@ describe('Users Database Operations', () => {
       expect(result.hashedPassword).toBe('hashed_password_123');
       expect(result.emailVerified).toBe(true);
       expect(result.active).toBe(true);
-      expect(result.role).toBe('collector');
       expect(result.id).toBeTruthy();
       expect(result.createdAt).toBeTruthy();
       expect(result.updatedAt).toBeTruthy();
@@ -69,6 +70,7 @@ describe('Users Database Operations', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'jane.smith@example.com',
+        hashedPassword: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
@@ -80,7 +82,6 @@ describe('Users Database Operations', () => {
       expect(result.hashedPassword).toBeNull();
       expect(result.emailVerified).toBe(false);
       expect(result.active).toBe(true);
-      expect(result.role).toBe('collector');
     });
 
     it('should handle duplicate email addresses', async () => {
@@ -88,28 +89,18 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'duplicate@example.com',
+        hashedPassword: 'hashed_password_123',
       };
 
       const userParams2: CreateUserParams = {
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'duplicate@example.com',
+        hashedPassword: 'hashed_password_123',
       };
 
       await createUser(userParams1);
       await expect(createUser(userParams2)).rejects.toThrow();
-    });
-
-    it('should handle different roles', async () => {
-      const adminParams: CreateUserParams = {
-        firstName: 'Admin',
-        lastName: 'User',
-        email: 'admin@example.com',
-        role: 'admin',
-      };
-
-      const result = await createUser(adminParams);
-      expect(result.role).toBe('admin');
     });
   });
 
@@ -119,6 +110,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+        hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -140,6 +132,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -161,6 +154,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -188,6 +182,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -204,6 +199,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -223,12 +219,14 @@ describe('Users Database Operations', () => {
         firstName: 'Active',
         lastName: 'User',
         email: 'active@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const user2Params: CreateUserParams = {
         firstName: 'Inactive',
         lastName: 'User',
         email: 'inactive@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const activeUser = await createUser(user1Params);
@@ -248,6 +246,7 @@ describe('Users Database Operations', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         emailVerified: false,
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -265,10 +264,15 @@ describe('Users Database Operations', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         hashedPassword: 'old_password',
+		emailVerified: true,
+		active: true,
       };
 
       const created = await createUser(userParams);
-      const result = await updateUserPassword(created.id, 'new_hashed_password');
+      const result = await updateUserPassword(
+        created.id,
+        'new_hashed_password'
+      );
 
       expect(result?.hashedPassword).toBe('new_hashed_password');
     });
@@ -280,6 +284,7 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const created = await createUser(userParams);
@@ -290,20 +295,23 @@ describe('Users Database Operations', () => {
     });
 
     it('should not throw error when user not found', async () => {
-      await expect(deleteUser('550e8400-e29b-41d4-a716-446655440000')).resolves.not.toThrow();
+      await expect(
+        deleteUser('550e8400-e29b-41d4-a716-446655440000')
+      ).resolves.not.toThrow();
     });
   });
 
   describe('Data validation', () => {
     it('should handle special characters in names', async () => {
       const userParams: CreateUserParams = {
-        firstName: 'John-Paul O\'Connor',
+        firstName: "John-Paul O'Connor",
         lastName: 'Müller-Schmidt',
         email: 'john.paul@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
-      expect(result.firstName).toBe('John-Paul O\'Connor');
+      expect(result.firstName).toBe("John-Paul O'Connor");
       expect(result.lastName).toBe('Müller-Schmidt');
     });
 
@@ -312,6 +320,7 @@ describe('Users Database Operations', () => {
         firstName: '张',
         lastName: '三',
         email: 'zhang.san@example.com',
+		hashedPassword: 'hashed_password_123',
       };
 
       const result = await createUser(userParams);
@@ -324,10 +333,13 @@ describe('Users Database Operations', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john.doe@example.com',
-      };
+		hashedPassword: 'hashed_password_123',
+    };
 
       const result = await createUser(userParams);
-      expect(result.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(result.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      );
     });
   });
 });

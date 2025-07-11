@@ -8,7 +8,7 @@ import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 
 import { register, type RegisterActionState } from '../actions';
-import { toast } from '@/components/toast';
+import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 
 export default function Page() {
@@ -28,16 +28,21 @@ export default function Page() {
 
   useEffect(() => {
     if (state.status === 'user_exists') {
-      toast({ type: 'error', description: 'Account already exists!' });
+      toast.error('Account already exists!', {
+        description: 'Please try a different email.',
+      });
     } else if (state.status === 'failed') {
-      toast({ type: 'error', description: 'Failed to create account!' });
+      toast.error('Failed to create account!', {
+        description: 'Please try again.',
+      });
     } else if (state.status === 'invalid_data') {
-      toast({
-        type: 'error',
-        description: 'Failed validating your submission!',
+      toast.error('Failed validating your submission!', {
+        description: 'Please try again.',
       });
     } else if (state.status === 'success') {
-      toast({ type: 'success', description: 'Account created successfully!' });
+      toast.success('Account created successfully!', {
+        description: 'Please check your email for verification.',
+      });
 
       setIsSuccessful(true);
       updateSession();

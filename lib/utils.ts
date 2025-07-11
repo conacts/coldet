@@ -39,3 +39,10 @@ export function extractMessageIdFromEmailHeader(emailHeader: string): string | n
 
 	return messageId;
 }
+
+export function generateDummyPassword() {
+	const password = generateId(12);
+	const hashedPassword = generateHashedPassword(password);
+
+	return hashedPassword;
+}

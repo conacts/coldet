@@ -34,14 +34,13 @@ export type PartialOrganization = Partial<Organization>;
 // Users table - Platform users who collect debts
 export const users = pgTable('users', {
 	id: uuid('id').primaryKey().notNull().defaultRandom(),
-	firstName: varchar('first_name', { length: 100 }).notNull(),
-	lastName: varchar('last_name', { length: 100 }).notNull(),
+	firstName: varchar('first_name', { length: 100 }),
+	lastName: varchar('last_name', { length: 100 }),
 	email: varchar('email', { length: 255 }).unique().notNull(),
+	hashedPassword: varchar('hashed_password', { length: 255 }).notNull(),
 	phone: varchar('phone', { length: 20 }),
-	hashedPassword: varchar('hashed_password', { length: 255 }),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	active: boolean('active').notNull().default(true),
-	role: varchar('role', { length: 50 }).notNull().default('collector'),
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow(),
 	lastLoginAt: timestamp('last_login_at'),

@@ -48,7 +48,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 									className="h-fit p-2"
 									onClick={() => {
 										setOpenMobile(false);
-										router.push('/chat');
+										router.push('/dashboard');
 										router.refresh();
 									}}
 									type="button"

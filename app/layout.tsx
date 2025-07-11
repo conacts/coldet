@@ -4,6 +4,7 @@ import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { SessionProvider } from 'next-auth/react';
 
 const spaceGrotesk = Space_Grotesk({
 	subsets: ['latin'],
@@ -37,7 +38,7 @@ export default function RootLayout({
 			>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					<Toaster />
-					{children}
+					<SessionProvider>{children}</SessionProvider>
 					<Analytics />
 				</ThemeProvider>
 			</body>
